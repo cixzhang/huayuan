@@ -1,4 +1,5 @@
 import { fg, bg, fgRgb, bgRgb, bold } from '../terminal/ansi.js';
+import { getSpecies } from '../data/plants.js';
 
 // ============================================================
 //  Huayuan Color Palette
@@ -97,10 +98,22 @@ export function riverFgBg(variant: number): { fg: string; bg: string } {
   };
 }
 
-export function plantFg(speciesId: string, stage: number): string {
+export function plantFg(speciesId: string, stage: number, colorVariant: number = 0): string {
+  const species = getSpecies(speciesId);
+  if (species?.colorVariants && colorVariant > 0 && colorVariant < species.colorVariants.length) {
+    const variantColors = species.colorVariants[colorVariant];
+    if (variantColors && variantColors[stage] !== undefined) {
+      return fg(variantColors[stage]);
+    }
+  }
+  // Fall back to PLANT_COLORS for default (variant 0) base species
   const colors = PLANT_COLORS[speciesId as keyof typeof PLANT_COLORS];
-  if (!colors) return fg(255);
-  return fg(colors[stage] ?? 255);
+  if (colors) return fg(colors[stage] ?? 255);
+  // For hybrids with variant 0, use their colorVariants[0]
+  if (species?.colorVariants?.[0]) {
+    return fg(species.colorVariants[0][stage] ?? 255);
+  }
+  return fg(255);
 }
 
 export const PLANT_STYLE = bold;

@@ -26,7 +26,7 @@ export function renderFlowerLayer(state: GameState): (RenderCell | null)[][] {
       if (plant.stage >= PlantStage.Mature) {
         row.push({
           char: species.stages[plant.stage],
-          fg: plantFg(plant.speciesId, plant.stage),
+          fg: plantFg(plant.speciesId, plant.stage, plant.colorVariant),
           bg: soilBgForWater(cell.waterLevel),
           style: PLANT_STYLE,
         });

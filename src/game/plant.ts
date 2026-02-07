@@ -3,13 +3,14 @@ import { PlantStage } from '../types.js';
 import { getSpecies } from '../data/plants.js';
 import { WATER_THRESHOLD } from '../constants.js';
 
-export function createPlant(speciesId: string): Plant {
+export function createPlant(speciesId: string, colorVariant: number = 0): Plant {
   return {
     speciesId,
     stage: PlantStage.Seed,
     waterLevel: 0,
     growthProgress: 0,
     age: 0,
+    colorVariant,
   };
 }
 

@@ -103,7 +103,8 @@ export function renderHud(state: GameState, cols: number): RenderCell[][] {
         if (vocab) {
           vocabStr = ` | ${vocab.hanzi} (${vocab.pinyin}) = ${vocab.english}`;
         }
-        line2 = ` ${species.hanzi} ${species.name} [${stageName}] water:${cell.waterLevel}% growth:${cell.plant.growthProgress}/${species.growthTicks[cell.plant.stage] || '✓'}${vocabStr}`;
+        const hybridStr = species.hybridLevel > 0 ? ` Hybrid L${species.hybridLevel}` : '';
+        line2 = ` ${species.hanzi} ${species.name} [${stageName}]${hybridStr} water:${cell.waterLevel}% growth:${cell.plant.growthProgress}/${species.growthTicks[cell.plant.stage] || '✓'}${vocabStr}`;
       }
     } else {
       const cell2 = state.grid[state.cursor.row]?.[state.cursor.col];

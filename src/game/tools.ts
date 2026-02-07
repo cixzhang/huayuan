@@ -4,6 +4,7 @@ import { createPlant } from './plant.js';
 import { hasSeed, removeSeed, addSeed } from './inventory.js';
 import { getCell } from './grid.js';
 import { getSpecies } from '../data/plants.js';
+import { getBaseParents } from '../data/hybrids.js';
 import { WATER_AMOUNT, WATER_MAX, MESSAGE_DURATION_TICKS } from '../constants.js';
 
 function setMessage(state: GameState, msg: string): void {
@@ -74,10 +75,20 @@ function harvestPlant(state: GameState, cell: ReturnType<typeof getCell> & {}): 
   }
 
   const species = getSpecies(cell.plant.speciesId);
-  // Harvesting gives back 2 seeds
-  addSeed(state.inventory, cell.plant.speciesId, 2);
-  cell.plant = null;
-  setMessage(state, `Harvested ${species?.hanzi || ''}! +2 seeds`);
+  // Base species: 2 seeds of same type. Hybrids: 1 seed of each base parent.
+  if (species && species.hybridLevel > 0) {
+    const bases = getBaseParents(cell.plant.speciesId);
+    for (const baseId of bases) {
+      addSeed(state.inventory, baseId, 1);
+    }
+    const baseNames = bases.map(id => getSpecies(id)?.hanzi || id).join('+');
+    cell.plant = null;
+    setMessage(state, `Harvested ${species.hanzi}! +1 ${baseNames} seeds`);
+  } else {
+    addSeed(state.inventory, cell.plant.speciesId, 2);
+    cell.plant = null;
+    setMessage(state, `Harvested ${species?.hanzi || ''}! +2 seeds`);
+  }
 }
 
 export function useToolOnArea(state: GameState, minR: number, maxR: number, minC: number, maxC: number): void {

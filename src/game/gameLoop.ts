@@ -6,6 +6,7 @@ import { clampPosition } from './grid.js';
 import { growPlant } from './plant.js';
 import { useTool, useToolOnArea } from './tools.js';
 import { SEED_ORDER, getSpecies } from '../data/plants.js';
+import { propagationTick, waterDonationTick } from './propagation.js';
 
 export class GameLoop {
   private renderTimer: ReturnType<typeof setInterval> | null = null;
@@ -319,6 +320,10 @@ export class GameLoop {
         }
       }
     }
+
+    // Water donation then propagation (after plant growth)
+    waterDonationTick(s);
+    propagationTick(s);
   }
 
   resizeRenderer(gridRows: number, gridCols: number): void {

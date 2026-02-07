@@ -59,6 +59,9 @@ export interface PlantSpecies {
   hanzi: string;
   pinyin: string;
   english: string;
+  hybridLevel: number;              // 0=base, 1-4=hybrid
+  colorVariants: number[][];        // array of [seed,sprout,growing,mature,flowering] 256-color code arrays
+  parentSpecies?: [string, string]; // what species combine to create this
 }
 
 export interface Plant {
@@ -67,6 +70,7 @@ export interface Plant {
   waterLevel: number;
   growthProgress: number;     // Ticks accumulated toward next stage
   age: number;                // Total ticks alive
+  colorVariant: number;       // index into species color variant palette (0 = default)
 }
 
 // === Grid Cell ===

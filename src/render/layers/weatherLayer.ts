@@ -71,10 +71,8 @@ function renderClouds(
 ): void {
   const cloudChars = ['░', '▒', '░', '·'];
   const fg = fgRgb(...WEATHER.cloud);
-  // Clouds drift across the top 30% of rows
-  const cloudRows = Math.max(2, Math.floor(rows * 0.3));
-
-  for (let r = 0; r < cloudRows; r++) {
+  // Clouds drift across the whole map (top-down view — clouds are overhead)
+  for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       // Drift offset: clouds move right over time
       const driftC = (c + Math.floor(tick * 0.5) + r * 3) % cols;
