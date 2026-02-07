@@ -1,12 +1,13 @@
 import type { GameState, GameAction } from '../types.js';
-import { GameActionType, ToolType, InputMode, WeatherType } from '../types.js';
+import { GameActionType, ToolType, InputMode, WeatherType, PlantStage } from '../types.js';
 import { Renderer } from '../render/renderer.js';
 import { RENDER_INTERVAL_MS, GROWTH_TICK_MS, JUMP_DISTANCE, WATER_DECAY_PER_TICK, MESSAGE_DURATION_TICKS, RIVER_WATER_RADIUS, RIVER_WATER_AMOUNT, WATER_MAX, WEATHER_MIN_DURATION, WEATHER_MAX_DURATION, WEATHER_TRANSITION_TICKS, RAIN_WATER_PER_TICK, NIGHT_GROWTH_PENALTY, DAY_DURATION_TICKS, NIGHT_DURATION_TICKS } from '../constants.js';
 import { clampPosition } from './grid.js';
 import { growPlant } from './plant.js';
 import { useTool, useToolOnArea } from './tools.js';
 import { SEED_ORDER, getSpecies } from '../data/plants.js';
-import { propagationTick, waterDonationTick } from './propagation.js';
+import { propagationTick, waterDonationTick, specialPropagationTick } from './propagation.js';
+import { birdTick, birdFlyTick, startDialog, advanceDialog, selectDialogOption, exitDialog, getBirdAtPosition } from './birds.js';
 
 export class GameLoop {
   private renderTimer: ReturnType<typeof setInterval> | null = null;
@@ -27,6 +28,7 @@ export class GameLoop {
 
     // Render loop at 20fps
     this.renderTimer = setInterval(() => {
+      birdFlyTick(this.state);
       this.renderer.render(this.state);
     }, RENDER_INTERVAL_MS);
 
@@ -142,8 +144,23 @@ export class GameLoop {
         break;
 
       case GameActionType.CycleSeed: {
-        const idx = SEED_ORDER.indexOf(s.selectedSeed);
-        s.selectedSeed = SEED_ORDER[(idx + 1) % SEED_ORDER.length];
+        // Build available seed list from inventory (count > 0)
+        const available: string[] = [];
+        // Start with SEED_ORDER (base + special), then add any hybrid IDs
+        const allKnown = [...SEED_ORDER];
+        for (const id of Object.keys(s.inventory.seeds)) {
+          if (!allKnown.includes(id)) allKnown.push(id);
+        }
+        for (const id of allKnown) {
+          if ((s.inventory.seeds[id] || 0) > 0) available.push(id);
+        }
+        if (available.length === 0) {
+          s.message = 'No seeds!';
+          s.messageExpiry = s.tickCount + MESSAGE_DURATION_TICKS;
+          break;
+        }
+        const idx = available.indexOf(s.selectedSeed);
+        s.selectedSeed = available[(idx + 1) % available.length];
         const species = getSpecies(s.selectedSeed);
         s.message = `Seed: ${species?.hanzi || ''} ${species?.name || ''}`;
         s.messageExpiry = s.tickCount + MESSAGE_DURATION_TICKS;
@@ -179,6 +196,34 @@ export class GameLoop {
 
       case GameActionType.ToggleHelp:
         s.showHelp = !s.showHelp;
+        break;
+
+      case GameActionType.Talk: {
+        const bird = getBirdAtPosition(s, s.cursor.row, s.cursor.col);
+        if (bird) {
+          startDialog(s, bird.id);
+        }
+        break;
+      }
+
+      case GameActionType.DialogAdvance:
+        advanceDialog(s);
+        break;
+
+      case GameActionType.DialogSelect1:
+        selectDialogOption(s, 0);
+        break;
+
+      case GameActionType.DialogSelect2:
+        selectDialogOption(s, 1);
+        break;
+
+      case GameActionType.DialogSelect3:
+        selectDialogOption(s, 2);
+        break;
+
+      case GameActionType.DialogExit:
+        exitDialog(s);
         break;
     }
   }
@@ -315,6 +360,28 @@ export class GameLoop {
         if (cell.plant) {
           const skipGrowth = s.weather.isNight && s.weather.nightPhase > 0.5 && s.tickCount % 2 === 0;
           if (!skipGrowth) {
+            // Moss requires an adjacent tree (stage >= Mature) to grow
+            const plantSpecies = getSpecies(cell.plant.speciesId);
+            if (plantSpecies?.special === 'moss') {
+              let hasTree = false;
+              for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]] as const) {
+                const nr = r + dr;
+                const nc = c + dc;
+                if (nr < 0 || nr >= s.gridRows || nc < 0 || nc >= s.gridCols) continue;
+                const neighbor = s.grid[nr][nc];
+                if (neighbor.plant) {
+                  const nSpecies = getSpecies(neighbor.plant.speciesId);
+                  if (nSpecies?.id === 'tree' && neighbor.plant.stage >= PlantStage.Mature) {
+                    hasTree = true;
+                    break;
+                  }
+                }
+              }
+              if (!hasTree) {
+                cell.plant.age++;
+                continue;
+              }
+            }
             growPlant(cell);
           }
         }
@@ -324,6 +391,10 @@ export class GameLoop {
     // Water donation then propagation (after plant growth)
     waterDonationTick(s);
     propagationTick(s);
+    specialPropagationTick(s);
+
+    // Bird spawning and resting updates
+    birdTick(s);
   }
 
   resizeRenderer(gridRows: number, gridCols: number): void {

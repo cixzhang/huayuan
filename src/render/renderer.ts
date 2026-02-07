@@ -4,8 +4,10 @@ import { FrameBuffer } from './frame.js';
 import { renderGroundLayer } from './layers/groundLayer.js';
 import { renderStemLayer } from './layers/stemLayer.js';
 import { renderFlowerLayer } from './layers/flowerLayer.js';
+import { renderBirdLayer } from './layers/birdLayer.js';
 import { renderWeatherLayer } from './layers/weatherLayer.js';
 import { renderHud, renderHelpOverlay } from './hud.js';
+import { renderDialogOverlay } from './dialog.js';
 import { inverse, bgRgb } from '../terminal/ansi.js';
 import { CELL_WIDTH, HUD_ROWS } from '../constants.js';
 
@@ -45,6 +47,17 @@ export class Renderer {
     for (let r = 0; r < state.gridRows; r++) {
       for (let c = 0; c < state.gridCols; c++) {
         const cell = flowers[r]?.[c];
+        if (cell) {
+          this.buffer.set(r, c, cell);
+        }
+      }
+    }
+
+    // Layer 3.5: Birds
+    const birdCells = renderBirdLayer(state);
+    for (let r = 0; r < state.gridRows; r++) {
+      for (let c = 0; c < state.gridCols; c++) {
+        const cell = birdCells[r]?.[c];
         if (cell) {
           this.buffer.set(r, c, cell);
         }
@@ -128,6 +141,18 @@ export class Renderer {
         for (let c = 0; c < helpOverlay[r].length; c++) {
           if (helpOverlay[r][c].char !== ' ' || helpOverlay[r][c].bg !== '') {
             this.buffer.set(r, c, helpOverlay[r][c]);
+          }
+        }
+      }
+    }
+
+    // Dialog overlay (replaces game grid if active)
+    if (state.dialog.active) {
+      const dialogOverlay = renderDialogOverlay(state, this.buffer.cols, state.gridRows);
+      for (let r = 0; r < dialogOverlay.length; r++) {
+        for (let c = 0; c < dialogOverlay[r].length; c++) {
+          if (dialogOverlay[r][c].char !== ' ' || dialogOverlay[r][c].bg !== '') {
+            this.buffer.set(r, c, dialogOverlay[r][c]);
           }
         }
       }

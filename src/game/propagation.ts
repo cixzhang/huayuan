@@ -1,6 +1,7 @@
 import type { GameState } from '../types.js';
 import { PlantStage } from '../types.js';
 import { createPlant } from './plant.js';
+import { getSpecies } from '../data/plants.js';
 import { resolveHybridOffspring, resolveOffspringColorVariant } from '../data/hybrids.js';
 import {
   PROPAGATION_CHANCE,
@@ -46,6 +47,9 @@ export function propagationTick(state: GameState): void {
     for (let c = 0; c < gridCols; c++) {
       const cell = grid[r][c];
       if (!cell.plant) continue;
+      // Skip special plants from hybrid propagation
+      const species = getSpecies(cell.plant.speciesId);
+      if (species?.special) continue;
       if (cell.plant.stage < PlantStage.Flowering) continue;
       if (cell.plant.age < PROPAGATION_MIN_AGE) continue;
       if (cell.waterLevel < PROPAGATION_WATER_THRESHOLD) continue;
@@ -133,6 +137,9 @@ export function waterDonationTick(state: GameState): void {
     for (let c = 0; c < gridCols; c++) {
       const cell = grid[r][c];
       if (!cell.plant) continue;
+      // Cactus doesn't donate water
+      const donorSpecies = getSpecies(cell.plant.speciesId);
+      if (donorSpecies?.special === 'cactus') continue;
       if (cell.waterLevel < WATER_DONATION_THRESHOLD) continue;
 
       // Donate to cardinal neighbors
@@ -156,5 +163,111 @@ export function waterDonationTick(state: GameState): void {
   for (const event of events) {
     const cell = grid[event.row][event.col];
     cell.waterLevel = Math.min(WATER_MAX, cell.waterLevel + event.amount);
+  }
+}
+
+export function specialPropagationTick(state: GameState): void {
+  const { grid, gridRows, gridCols } = state;
+  const events: PropagationEvent[] = [];
+  const claimed = new Set<string>();
+
+  for (let r = 0; r < gridRows; r++) {
+    for (let c = 0; c < gridCols; c++) {
+      const cell = grid[r][c];
+      if (!cell.plant) continue;
+      if (cell.plant.stage < PlantStage.Flowering) continue;
+      if (cell.plant.age < PROPAGATION_MIN_AGE) continue;
+
+      const species = getSpecies(cell.plant.speciesId);
+      if (!species?.special) continue;
+
+      if (Math.random() > PROPAGATION_CHANCE) continue;
+
+      // Find valid target cells based on special type
+      const targets: [number, number][] = [];
+
+      for (const [dr, dc] of DIRS) {
+        const nr = r + dr;
+        const nc = c + dc;
+        if (nr < 0 || nr >= gridRows || nc < 0 || nc >= gridCols) continue;
+        const neighbor = grid[nr][nc];
+        if (neighbor.plant) continue;
+        const key = `${nr},${nc}`;
+        if (claimed.has(key)) continue;
+
+        if (species.special === 'lotus') {
+          // Target: empty river tile adjacent to at least 1 non-river cell
+          if (!neighbor.river) continue;
+          let adjLand = false;
+          for (const [dr2, dc2] of CARDINAL) {
+            const nr2 = nr + dr2;
+            const nc2 = nc + dc2;
+            if (nr2 < 0 || nr2 >= gridRows || nc2 < 0 || nc2 >= gridCols) continue;
+            if (!grid[nr2][nc2].river) { adjLand = true; break; }
+          }
+          if (!adjLand) continue;
+        } else if (species.special === 'cactus') {
+          // Target: empty non-river tile with water < 25
+          if (neighbor.river) continue;
+          if (neighbor.waterLevel >= 25) continue;
+        } else if (species.special === 'moss') {
+          // Target: empty non-river tile adjacent to a tree (stage >= Mature)
+          if (neighbor.river) continue;
+          let adjTree = false;
+          for (const [dr2, dc2] of CARDINAL) {
+            const nr2 = nr + dr2;
+            const nc2 = nc + dc2;
+            if (nr2 < 0 || nr2 >= gridRows || nc2 < 0 || nc2 >= gridCols) continue;
+            const adj = grid[nr2][nc2];
+            if (adj.plant) {
+              const adjSpecies = getSpecies(adj.plant.speciesId);
+              if (adjSpecies?.id === 'tree' && adj.plant.stage >= PlantStage.Mature) {
+                adjTree = true;
+                break;
+              }
+            }
+          }
+          if (!adjTree) continue;
+        }
+
+        targets.push([nr, nc]);
+      }
+
+      if (targets.length === 0) continue;
+
+      const target = targets[Math.floor(Math.random() * targets.length)];
+      const key = `${target[0]},${target[1]}`;
+      claimed.add(key);
+
+      // Clone parent color variant (with small mutation chance)
+      let colorVariant = cell.plant.colorVariant;
+      if (Math.random() < 0.1 && species.colorVariants.length > 1) {
+        colorVariant = Math.floor(Math.random() * species.colorVariants.length);
+      }
+
+      events.push({
+        row: target[0],
+        col: target[1],
+        speciesId: species.id,
+        colorVariant,
+      });
+    }
+  }
+
+  // Apply events
+  for (const event of events) {
+    const cell = grid[event.row][event.col];
+    if (cell.plant) continue;
+    // Lotus goes on river, others on land
+    const species = getSpecies(event.speciesId);
+    if (species?.special === 'lotus') {
+      if (!cell.river) continue;
+    } else {
+      if (cell.river) continue;
+    }
+    cell.plant = createPlant(event.speciesId, event.colorVariant);
+    if (species?.special !== 'lotus') {
+      cell.waterLevel = Math.min(WATER_MAX, cell.waterLevel + PROPAGATION_OFFSPRING_WATER);
+    }
   }
 }

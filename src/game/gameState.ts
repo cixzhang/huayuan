@@ -5,6 +5,7 @@ import { createInventory } from './inventory.js';
 import { CELL_WIDTH, HUD_ROWS, MIN_GRID_COLS, MIN_GRID_ROWS, WEATHER_MIN_DURATION, WEATHER_MAX_DURATION } from '../constants.js';
 import { getTerminalSize } from '../terminal/screen.js';
 import { SEED_ORDER } from '../data/plants.js';
+import { createDefaultDialogState } from './birds.js';
 
 function generateRiver(grid: import('../types.js').Cell[][], rows: number, cols: number): void {
   // Place river roughly 1/3 from the right, meandering vertically
@@ -61,6 +62,9 @@ export function createGameState(): GameState {
     message: '',
     messageExpiry: 0,
     weather,
+    birds: [],
+    nextBirdId: 1,
+    dialog: createDefaultDialogState(),
   };
 }
 

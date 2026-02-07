@@ -2,21 +2,40 @@ import type { GameState, RenderCell } from '../types.js';
 import { InputMode, ToolType, PlantStage, WeatherType } from '../types.js';
 import { fg, bg } from '../terminal/ansi.js';
 import { getSpecies } from '../data/plants.js';
-import { lookupChar } from '../data/chinese.js';
-import { HUD, HELP } from './palette.js';
+import { HUD, HELP, TOOL_COLORS, BIRD_COLORS } from './palette.js';
+import { getBirdAtPosition } from '../game/birds.js';
+import { getBirdTypeDef } from '../data/birds.js';
+import { getDialogById } from '../data/birds.js';
+import { plantFg } from './palette.js';
 
-function padOrTruncate(str: string, len: number): string {
-  if (str.length >= len) return str.slice(0, len);
-  return str + ' '.repeat(len - str.length);
+// --- Segment-based row builder ---
+
+interface Segment {
+  text: string;
+  fg: string;
+  bg: string;
+}
+
+function renderColoredRow(segments: Segment[], width: number, defaultBg: string): RenderCell[] {
+  const cells: RenderCell[] = [];
+  for (const seg of segments) {
+    for (const ch of seg.text) {
+      if (cells.length >= width) break;
+      cells.push({ char: ch, fg: seg.fg, bg: seg.bg || defaultBg, style: '' });
+    }
+  }
+  // Pad remaining
+  while (cells.length < width) {
+    cells.push({ char: ' ', fg: '', bg: defaultBg, style: '' });
+  }
+  return cells;
 }
 
 function textToRenderCells(text: string, fgColor: string, bgColor: string, width: number): RenderCell[] {
   const cells: RenderCell[] = [];
-  const padded = padOrTruncate(text, width);
-  // Each cell takes 2 terminal columns; we store 1 char per cell (ASCII gets padded in frame flush)
   for (let i = 0; i < width; i++) {
     cells.push({
-      char: padded[i] || ' ',
+      char: (i < text.length ? text[i] : ' '),
       fg: fgColor,
       bg: bgColor,
       style: '',
@@ -25,15 +44,9 @@ function textToRenderCells(text: string, fgColor: string, bgColor: string, width
   return cells;
 }
 
-function toolName(tool: ToolType): string {
-  switch (tool) {
-    case ToolType.Plant: return '1:Plant';
-    case ToolType.Water: return '2:Water';
-    case ToolType.Harvest: return '3:Harvest';
-  }
-}
+// --- Weather display ---
 
-function weatherDisplay(state: GameState): string {
+function weatherDisplay(state: GameState): Segment[] {
   const w = state.weather;
   let icon: string;
   let hanzi: string;
@@ -41,97 +54,181 @@ function weatherDisplay(state: GameState): string {
   switch (w.current) {
     case WeatherType.Clear:  icon = '☀'; hanzi = '晴'; name = 'Sun';   break;
     case WeatherType.Cloudy: icon = '☁'; hanzi = '云'; name = 'Cloud'; break;
-    case WeatherType.Rain:   icon = '🌧'; hanzi = '雨'; name = 'Rain'; break;
-    case WeatherType.Wind:   icon = '💨'; hanzi = '风'; name = 'Wind'; break;
+    case WeatherType.Rain:   icon = '☂'; hanzi = '雨'; name = 'Rain';  break;
+    case WeatherType.Wind:   icon = '≋'; hanzi = '风'; name = 'Wind';  break;
   }
-  // Intensity dots: 3 levels
   const filled = Math.ceil(w.intensity * 3);
   const dots = '●'.repeat(filled) + '○'.repeat(3 - filled);
-  let result = `${hanzi} ${name} ${dots}`;
+  let nightStr = '';
   if (w.isNight || w.nightPhase > 0.1) {
-    result += ' 🌙';
+    nightStr = ' ☾';
   }
-  return result;
+  return [
+    { text: `${hanzi} ${name} ${dots}${nightStr}`, fg: HUD.fg, bg: '' },
+  ];
 }
 
-function modeName(mode: InputMode): string {
-  switch (mode) {
-    case InputMode.Normal: return 'NORMAL';
-    case InputMode.Visual: return 'VISUAL';
-    case InputMode.Command: return 'COMMAND';
-  }
+// --- Water meter ---
+
+function waterMeter(waterLevel: number): string {
+  // 0-16%=◇◇◇, 17-33%=⬙◇◇, 34-50%=◆◇◇, 51-66%=◆⬙◇, 67-83%=◆◆◇, 84-99%=◆◆⬙, 100%=◆◆◆
+  const pct = waterLevel;
+  if (pct >= 100) return '◆◆◆';
+  if (pct >= 84) return '◆◆⬙';
+  if (pct >= 67) return '◆◆◇';
+  if (pct >= 51) return '◆⬙◇';
+  if (pct >= 34) return '◆◇◇';
+  if (pct >= 17) return '⬙◇◇';
+  return '◇◇◇';
 }
+
+// --- Growth progress bar ---
+
+function growthBar(plant: { stage: PlantStage; growthProgress: number }, species: { growthTicks: number[] }): string {
+  if (plant.stage >= PlantStage.Flowering) return '▓▓▓▓▓';
+  const needed = species.growthTicks[plant.stage] || 1;
+  const ratio = Math.min(1, plant.growthProgress / needed);
+  const filled = Math.round(ratio * 5);
+  return '▓'.repeat(filled) + '░'.repeat(5 - filled);
+}
+
+// --- Main HUD render ---
 
 export function renderHud(state: GameState, cols: number): RenderCell[][] {
   const rows: RenderCell[][] = [];
   const hudBg = HUD.bg;
   const hudFg = HUD.fg;
+  const dimFg = HUD.fgDim;
+  const waterColor = fg(75);
 
-  // Row 1: Mode | Tool | Seed | Inventory summary
-  const modeStr = modeName(state.mode);
-  const toolStr = toolName(state.tool);
-  const seedSpecies = getSpecies(state.selectedSeed);
-  const seedStr = seedSpecies ? `Seed:${seedSpecies.hanzi}(${seedSpecies.name})` : 'Seed:?';
-  const invParts: string[] = [];
-  for (const [id, count] of Object.entries(state.inventory.seeds)) {
-    const sp = getSpecies(id);
-    if (sp && count > 0) {
-      invParts.push(`${sp.hanzi}x${count}`);
+  // === Dialog mode: rows 1 & 2 show pinyin ===
+  if (state.mode === InputMode.Dialog && state.dialog.active) {
+    const tree = getDialogById(state.dialog.treeId);
+    const d = state.dialog;
+
+    // Row 1: accumulated speech pinyin
+    let row1Text = ' ';
+    if (tree) {
+      const pinyinParts: string[] = [];
+      if (d.phase === 'speech') {
+        for (let i = 0; i <= Math.min(d.lineIndex, tree.lines.length - 1); i++) {
+          pinyinParts.push(tree.lines[i].pinyin);
+        }
+      } else {
+        for (let i = 0; i < tree.lines.length; i++) {
+          pinyinParts.push(tree.lines[i].pinyin);
+        }
+      }
+      row1Text = ' ' + pinyinParts.join('  ');
     }
-  }
-  const invStr = invParts.join(' ');
+    rows.push(textToRenderCells(row1Text.slice(0, cols), dimFg, hudBg, cols));
 
-  const weatherStr = weatherDisplay(state);
-  let line1 = ` [${modeStr}] ${toolStr} | ${weatherStr} | ${seedStr} | ${invStr}`;
-  if (state.message) {
-    line1 += `  -- ${state.message}`;
-  }
-  rows.push(textToRenderCells(line1, hudFg, hudBg, cols));
+    // Row 2: question pinyin or followup/failure pinyin
+    let row2Text = '';
+    if (tree) {
+      if (d.phase === 'question') {
+        row2Text = ' ' + tree.question.pinyin;
+      } else if (d.phase === 'result') {
+        if (d.answeredCorrectly) {
+          row2Text = ' ' + tree.followup.pinyin;
+        } else {
+          row2Text = ' bú duì! xià cì zài shìshi ba.';
+        }
+      }
+    }
+    rows.push(textToRenderCells(row2Text.slice(0, cols), dimFg, hudBg, cols));
 
-  // Row 2: Plant info at cursor / command buffer
-  let line2 = '';
+    // Row 3: dialog hints
+    const line3 = ' space:advance  1/2/3:answer  esc:exit';
+    rows.push(textToRenderCells(line3, dimFg, hudBg, cols));
+    return rows;
+  }
+
+  // === Row 1: Tool | Weather | [VISUAL] ===
+  const segments: Segment[] = [];
+  segments.push({ text: ' ', fg: '', bg: '' });
+
+  // Tool segment
+  const toolColor = state.tool === ToolType.Plant ? TOOL_COLORS.plant
+    : state.tool === ToolType.Water ? TOOL_COLORS.water
+    : TOOL_COLORS.harvest;
+
+  if (state.tool === ToolType.Plant) {
+    const seedSpecies = getSpecies(state.selectedSeed);
+    const seedHanzi = seedSpecies?.hanzi || '?';
+    const seedCount = state.inventory.seeds[state.selectedSeed] || 0;
+    // Get the flowering color for selected seed
+    const floweringColor = seedSpecies ? plantFg(seedSpecies.id, PlantStage.Flowering, 0) : '';
+    segments.push({ text: '1:Plant(', fg: toolColor, bg: '' });
+    segments.push({ text: seedHanzi, fg: floweringColor || toolColor, bg: '' });
+    segments.push({ text: `x${seedCount})`, fg: toolColor, bg: '' });
+  } else if (state.tool === ToolType.Water) {
+    segments.push({ text: '2:Water', fg: toolColor, bg: '' });
+  } else {
+    segments.push({ text: '3:Harvest', fg: toolColor, bg: '' });
+  }
+
+  segments.push({ text: ' | ', fg: dimFg, bg: '' });
+
+  // Weather segment
+  segments.push(...weatherDisplay(state));
+
+  // [VISUAL] right-aligned if in visual mode
+  if (state.mode === InputMode.Visual) {
+    // Calculate how many chars we've used so far
+    let usedLen = 0;
+    for (const seg of segments) usedLen += seg.text.length;
+    const visualTag = '[VISUAL]';
+    const padding = Math.max(1, cols - usedLen - visualTag.length);
+    segments.push({ text: ' '.repeat(padding), fg: '', bg: '' });
+    segments.push({ text: visualTag, fg: fg(201), bg: '' });
+  }
+
+  rows.push(renderColoredRow(segments, cols, hudBg));
+
+  // === Row 2: Water meter | Position | Plant/Bird info ===
   if (state.mode === InputMode.Command) {
-    line2 = ` :${state.commandBuffer}█`;
+    const cmdLine = ` :${state.commandBuffer}\u2588`;
+    rows.push(textToRenderCells(cmdLine, hudFg, hudBg, cols));
   } else {
     const cell = state.grid[state.cursor.row]?.[state.cursor.col];
-    if (cell?.plant) {
+    const row2Segments: Segment[] = [];
+    row2Segments.push({ text: ' ', fg: '', bg: '' });
+
+    // Water meter
+    const wLevel = cell ? cell.waterLevel : 0;
+    row2Segments.push({ text: waterMeter(wLevel), fg: waterColor, bg: '' });
+
+    // Position
+    row2Segments.push({ text: ` [${state.cursor.row},${state.cursor.col}]`, fg: dimFg, bg: '' });
+
+    // Bird at cursor?
+    const birdAtCursor = getBirdAtPosition(state, state.cursor.row, state.cursor.col);
+    if (birdAtCursor && birdAtCursor.state === 'resting') {
+      const bDef = getBirdTypeDef(birdAtCursor.type);
+      const bColor = fg(BIRD_COLORS[birdAtCursor.type]);
+      row2Segments.push({ text: ' ', fg: '', bg: '' });
+      row2Segments.push({ text: bDef.hanzi, fg: bColor, bg: '' });
+      row2Segments.push({ text: ` ${bDef.name} [t]`, fg: hudFg, bg: '' });
+    } else if (cell?.plant) {
       const species = getSpecies(cell.plant.speciesId);
       if (species) {
         const stageName = PlantStage[cell.plant.stage];
-        const vocab = lookupChar(species.stages[cell.plant.stage]);
-        let vocabStr = '';
-        if (vocab) {
-          vocabStr = ` | ${vocab.hanzi} (${vocab.pinyin}) = ${vocab.english}`;
-        }
-        const hybridStr = species.hybridLevel > 0 ? ` Hybrid L${species.hybridLevel}` : '';
-        line2 = ` ${species.hanzi} ${species.name} [${stageName}]${hybridStr} water:${cell.waterLevel}% growth:${cell.plant.growthProgress}/${species.growthTicks[cell.plant.stage] || '✓'}${vocabStr}`;
-      }
-    } else {
-      const cell2 = state.grid[state.cursor.row]?.[state.cursor.col];
-      if (cell2) {
-        line2 = ` Soil water:${cell2.waterLevel}% | pos:(${state.cursor.row},${state.cursor.col})`;
-        // Show weather vocab when weather is active
-        const w = state.weather;
-        let weatherHanzi = '';
-        if (w.current === WeatherType.Rain && w.intensity > 0) weatherHanzi = '雨';
-        else if (w.current === WeatherType.Wind && w.intensity > 0) weatherHanzi = '风';
-        else if (w.current === WeatherType.Cloudy && w.intensity > 0) weatherHanzi = '云';
-        else if (w.current === WeatherType.Clear && w.intensity > 0) weatherHanzi = '晴';
-        if (w.isNight) weatherHanzi = '夜';
-        if (weatherHanzi) {
-          const vocab = lookupChar(weatherHanzi);
-          if (vocab) {
-            line2 += ` | ${vocab.hanzi} (${vocab.pinyin}) = ${vocab.english}`;
-          }
-        }
+        const flowerColor = plantFg(species.id, PlantStage.Flowering, cell.plant.colorVariant);
+        const bar = growthBar(cell.plant, species);
+        row2Segments.push({ text: ' ', fg: '', bg: '' });
+        row2Segments.push({ text: species.hanzi, fg: flowerColor, bg: '' });
+        row2Segments.push({ text: ` ${species.name} [${stageName}] `, fg: hudFg, bg: '' });
+        row2Segments.push({ text: bar, fg: fg(82), bg: '' });
       }
     }
-  }
-  rows.push(textToRenderCells(line2, hudFg, hudBg, cols));
 
-  // Row 3: Help hint
-  const line3 = ' hjkl:move  space:use tool  tab:cycle tool  s:cycle seed  ?:help  :q quit';
-  rows.push(textToRenderCells(line3, HUD.fgDim, hudBg, cols));
+    rows.push(renderColoredRow(row2Segments, cols, hudBg));
+  }
+
+  // === Row 3: Shortened hint text ===
+  const line3 = ' hjkl:move  space:use  tab:tool  s:seed  t:talk  ?:help  :q';
+  rows.push(textToRenderCells(line3, dimFg, hudBg, cols));
 
   return rows;
 }

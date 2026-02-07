@@ -59,12 +59,72 @@ export const PLANT_SPECIES: Record<string, PlantSpecies> = {
       [229, 156, 46, 28, 64],
     ],
   },
+  lotus: {
+    id: 'lotus',
+    name: 'Lotus',
+    stages: ['◦', '芽', '⌇', '❁', '莲'],
+    growthTicks: [3, 5, 6, 8],
+    waterNeed: 6,
+    hanzi: '莲',
+    pinyin: 'lián',
+    english: 'lotus',
+    hybridLevel: -1,
+    special: 'lotus',
+    colorVariants: [
+      [229, 156, 46, 213, 207],
+      [229, 156, 46, 219, 213],
+      [229, 156, 46, 175, 169],
+      [229, 156, 46, 218, 212],
+      [229, 156, 46, 176, 170],
+      [229, 156, 46, 211, 205],
+    ],
+  },
+  cactus: {
+    id: 'cactus',
+    name: 'Cactus',
+    stages: ['◦', '芽', '⌇', '⌘', '仙'],
+    growthTicks: [4, 6, 8, 10],
+    waterNeed: 3,
+    hanzi: '仙人掌',
+    pinyin: 'xiānrénzhǎng',
+    english: 'cactus',
+    hybridLevel: -1,
+    special: 'cactus',
+    colorVariants: [
+      [229, 156, 46, 34, 70],
+      [229, 156, 46, 28, 64],
+      [229, 156, 40, 34, 70],
+      [229, 156, 46, 22, 58],
+      [229, 156, 46, 34, 76],
+      [229, 156, 34, 28, 64],
+    ],
+  },
+  moss: {
+    id: 'moss',
+    name: 'Moss',
+    stages: ['◦', '芽', '⌇', 'ϒ', '苔'],
+    growthTicks: [2, 3, 4, 5],
+    waterNeed: 4,
+    hanzi: '苔',
+    pinyin: 'tái',
+    english: 'moss',
+    hybridLevel: -1,
+    special: 'moss',
+    colorVariants: [
+      [229, 156, 46, 22, 58],
+      [229, 156, 46, 28, 64],
+      [229, 156, 34, 22, 58],
+      [229, 156, 46, 64, 100],
+      [229, 156, 40, 22, 58],
+      [229, 156, 46, 65, 101],
+    ],
+  },
 };
 
 // Register all hybrids into the main species map
 Object.assign(PLANT_SPECIES, HYBRID_SPECIES);
 
-export const SEED_ORDER = ['grass', 'flower', 'tree'];
+export const SEED_ORDER = ['grass', 'flower', 'tree', 'lotus', 'cactus', 'moss'];
 
 export function getSpecies(id: string): PlantSpecies | undefined {
   return PLANT_SPECIES[id];

@@ -18,5 +18,5 @@ export function removeSeed(inv: Inventory, speciesId: string): boolean {
 }
 
 export function addSeed(inv: Inventory, speciesId: string, count = 1): void {
-  inv.seeds[speciesId] = (inv.seeds[speciesId] || 0) + count;
+  inv.seeds[speciesId] = Math.min(99, (inv.seeds[speciesId] || 0) + count);
 }

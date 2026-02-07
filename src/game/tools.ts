@@ -2,10 +2,12 @@ import type { GameState, Position } from '../types.js';
 import { ToolType, PlantStage } from '../types.js';
 import { createPlant } from './plant.js';
 import { hasSeed, removeSeed, addSeed } from './inventory.js';
-import { getCell } from './grid.js';
+import { getCell, isInBounds } from './grid.js';
 import { getSpecies } from '../data/plants.js';
 import { getBaseParents } from '../data/hybrids.js';
 import { WATER_AMOUNT, WATER_MAX, MESSAGE_DURATION_TICKS } from '../constants.js';
+
+const CARDINAL_DIRS: [number, number][] = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 
 function setMessage(state: GameState, msg: string): void {
   state.message = msg;
@@ -29,26 +31,66 @@ export function useTool(state: GameState, pos: Position): void {
   }
 }
 
-function plantSeed(state: GameState, cell: ReturnType<typeof getCell> & {}, _pos: Position): void {
-  if (cell.river) {
-    setMessage(state, 'Cannot plant in the river!');
-    return;
-  }
+function plantSeed(state: GameState, cell: ReturnType<typeof getCell> & {}, pos: Position): void {
+  const species = getSpecies(state.selectedSeed);
 
-  if (cell.plant) {
-    setMessage(state, 'Cell already occupied!');
-    return;
+  // Special plant placement checks
+  if (species?.special === 'lotus') {
+    if (!cell.river) {
+      setMessage(state, 'Lotus can only be planted in the river!');
+      return;
+    }
+    if (cell.plant) {
+      setMessage(state, 'Cell already occupied!');
+      return;
+    }
+  } else if (species?.special === 'moss') {
+    if (cell.river) {
+      setMessage(state, 'Cannot plant in the river!');
+      return;
+    }
+    if (cell.plant) {
+      setMessage(state, 'Cell already occupied!');
+      return;
+    }
+    // Must be adjacent to a tree at stage >= Mature
+    let hasTree = false;
+    for (const [dr, dc] of CARDINAL_DIRS) {
+      const nr = pos.row + dr;
+      const nc = pos.col + dc;
+      if (!isInBounds(state, { row: nr, col: nc })) continue;
+      const neighbor = state.grid[nr][nc];
+      if (neighbor.plant) {
+        const nSpecies = getSpecies(neighbor.plant.speciesId);
+        if (nSpecies?.id === 'tree' && neighbor.plant.stage >= PlantStage.Mature) {
+          hasTree = true;
+          break;
+        }
+      }
+    }
+    if (!hasTree) {
+      setMessage(state, 'Moss must be planted next to a mature tree!');
+      return;
+    }
+  } else {
+    // Normal plants (including cactus)
+    if (cell.river) {
+      setMessage(state, 'Cannot plant in the river!');
+      return;
+    }
+    if (cell.plant) {
+      setMessage(state, 'Cell already occupied!');
+      return;
+    }
   }
 
   if (!hasSeed(state.inventory, state.selectedSeed)) {
-    const species = getSpecies(state.selectedSeed);
     setMessage(state, `No ${species?.name || ''} seeds left!`);
     return;
   }
 
   removeSeed(state.inventory, state.selectedSeed);
   cell.plant = createPlant(state.selectedSeed);
-  const species = getSpecies(state.selectedSeed);
   setMessage(state, `Planted ${species?.hanzi || ''} ${species?.name || ''}`);
 }
 

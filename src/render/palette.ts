@@ -46,6 +46,16 @@ export const PLANT_COLORS = {
   tree:   [229, 156, 46, 49, 85],
 };
 
+// --- Birds ---
+export const BIRD_COLORS = [196, 172, 159, 220]; // robin, sparrow, duck, goose
+
+// --- Tools ---
+export const TOOL_COLORS = {
+  plant: fg(82),    // green
+  water: fg(75),    // blue
+  harvest: fg(220), // gold
+};
+
 // --- HUD ---
 export const HUD = {
   bg:       bg(236),          // dark gray background

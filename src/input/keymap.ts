@@ -21,9 +21,19 @@ const normalMap: Record<string, GameActionType> = {
   tab: GameActionType.CycleTool,
   s: GameActionType.CycleSeed,
   v: GameActionType.EnterVisual,
+  t: GameActionType.Talk,
   '1': GameActionType.SelectTool1,
   '2': GameActionType.SelectTool2,
   '3': GameActionType.SelectTool3,
+};
+
+const dialogMap: Record<string, GameActionType> = {
+  '1': GameActionType.DialogSelect1,
+  '2': GameActionType.DialogSelect2,
+  '3': GameActionType.DialogSelect3,
+  space: GameActionType.DialogAdvance,
+  return: GameActionType.DialogAdvance,
+  escape: GameActionType.DialogExit,
 };
 
 const visualMap: Record<string, GameActionType> = {
@@ -62,6 +72,10 @@ export function resolveKey(key: KeyPress, mode: InputMode): GameActionType | nul
 
   if (mode === InputMode.Visual) {
     return visualMap[key.name] || visualMap[key.sequence] || null;
+  }
+
+  if (mode === InputMode.Dialog) {
+    return dialogMap[key.name] || dialogMap[key.sequence] || null;
   }
 
   return null;

@@ -13,6 +13,17 @@ export class InputManager {
       return;
     }
 
+    if (this.mode === InputMode.Dialog) {
+      const actionType = resolveKey(key, this.mode);
+      if (actionType !== null) {
+        if (actionType === GameActionType.DialogExit) {
+          this.mode = InputMode.Normal;
+        }
+        this.pushAction({ type: actionType });
+      }
+      return;
+    }
+
     const actionType = resolveKey(key, this.mode);
     if (actionType === null) return;
 

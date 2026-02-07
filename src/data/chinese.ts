@@ -30,6 +30,13 @@ export const VOCAB: Record<string, VocabEntry> = {
   '菊': { hanzi: '菊', pinyin: 'jú', english: 'chrysanthemum' },
   '梅': { hanzi: '梅', pinyin: 'méi', english: 'plum blossom' },
   '蘭': { hanzi: '蘭', pinyin: 'lán', english: 'orchid' },
+  '莲': { hanzi: '莲', pinyin: 'lián', english: 'lotus' },
+  '苔': { hanzi: '苔', pinyin: 'tái', english: 'moss' },
+  '鸟': { hanzi: '鸟', pinyin: 'niǎo', english: 'bird' },
+  '说': { hanzi: '说', pinyin: 'shuō', english: 'to speak' },
+  '对': { hanzi: '对', pinyin: 'duì', english: 'correct' },
+  '错': { hanzi: '错', pinyin: 'cuò', english: 'wrong' },
+  '飞': { hanzi: '飞', pinyin: 'fēi', english: 'to fly' },
 };
 
 export function lookupChar(char: string): VocabEntry | undefined {

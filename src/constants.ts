@@ -33,7 +33,7 @@ export const RIVER_WATER_AMOUNT = 8;       // Water added per tick to nearby til
 export const WEATHER_MIN_DURATION = 8;        // min growth ticks per state
 export const WEATHER_MAX_DURATION = 15;       // max growth ticks per state
 export const WEATHER_TRANSITION_TICKS = 3;    // ticks to ramp intensity up/down
-export const RAIN_WATER_PER_TICK = 5;         // water added to ALL cells when raining
+export const RAIN_WATER_PER_TICK = 4;         // water added to ALL cells when raining
 export const NIGHT_GROWTH_PENALTY = 0.5;      // growth ticks count half at night
 export const DAY_DURATION_TICKS = 40;         // ~2 min of day
 export const NIGHT_DURATION_TICKS = 20;       // ~1 min of night
@@ -45,6 +45,13 @@ export const PROPAGATION_WATER_THRESHOLD = 20;    // parent cell needs 20+ water
 export const PROPAGATION_OFFSPRING_WATER = 15;    // water gifted to offspring cell
 export const WATER_DONATION_AMOUNT = 3;           // water donated per tick per neighbor
 export const WATER_DONATION_THRESHOLD = 40;       // cell needs 40+ water to donate
+
+// Birds
+export const BIRD_MAX_COUNT = 3;
+export const BIRD_SPAWN_CHANCE = 0.08;
+export const BIRD_REST_DURATION = 20;
+export const BIRD_FLY_SPEED = 2;
+export const BIRD_FLAP_RATE = 5;
 
 // Messages
 export const MESSAGE_DURATION_TICKS = 10;
