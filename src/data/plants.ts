@@ -119,12 +119,32 @@ export const PLANT_SPECIES: Record<string, PlantSpecies> = {
       [229, 156, 46, 65, 101],
     ],
   },
+  maple: {
+    id: 'maple',
+    name: 'Maple',
+    stages: ['◦', '芽', '〴', '♣', '枫'],
+    growthTicks: [4, 6, 8, 10],
+    waterNeed: 12,
+    hanzi: '枫',
+    pinyin: 'mù',
+    english: 'tree',
+    hybridLevel: -1,
+    special: 'maple',
+    colorVariants: [
+      [229, 156, 46, 49, 160],
+      [229, 156, 46, 22, 202],
+      [229, 156, 34, 49, 208],
+      [229, 156, 46, 64, 166],
+      [229, 156, 40, 49, 124],
+      [229, 156, 46, 28, 204],
+    ],
+  },
 };
 
 // Register all hybrids into the main species map
 Object.assign(PLANT_SPECIES, HYBRID_SPECIES);
 
-export const SEED_ORDER = ['grass', 'flower', 'tree', 'lotus', 'cactus', 'moss'];
+export const SEED_ORDER = ['grass', 'flower', 'tree'];
 
 export function getSpecies(id: string): PlantSpecies | undefined {
   return PLANT_SPECIES[id];

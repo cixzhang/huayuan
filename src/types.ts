@@ -69,7 +69,7 @@ export interface PlantSpecies {
   hybridLevel: number;              // 0=base, 1-4=hybrid, -1=special
   colorVariants: number[][];        // array of [seed,sprout,growing,mature,flowering] 256-color code arrays
   parentSpecies?: [string, string]; // what species combine to create this
-  special?: 'lotus' | 'cactus' | 'moss';
+  special?: 'lotus' | 'cactus' | 'moss' | 'maple';
 }
 
 export interface Plant {
@@ -150,7 +150,7 @@ export type SeedRewardType =
   | 'random_base' | 'random_hybrid'
   | 'grass' | 'flower' | 'tree'
   | 'lotus' | 'cactus' | 'moss'
-  | 'cha' | 'zhu' | 'orchid' | 'maple'
+  | 'cha' | 'zhu' | 'maple'
   | 'fang' | 'miao' | 'guo' | 'tao' | 'ju' | 'mei' | 'lan';
 
 export interface DialogOption {

@@ -146,7 +146,7 @@ export function resolveSeedReward(rewardType: SeedRewardType, state: GameState):
 
   if (rewardType === 'random_hybrid') {
     // Find hybrid or special species the player hasn't discovered yet
-    const specials = ['lotus', 'cactus', 'moss'];
+    const specials = ['lotus', 'cactus', 'moss', 'maple'];
     const allOptions = [...Object.keys(HYBRID_SPECIES), ...specials];
     const undiscovered = allOptions.filter(id => {
       const count = state.inventory.seeds[id] || 0;

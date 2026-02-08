@@ -1,5 +1,5 @@
 import type { GameState } from '../types.js';
-import { PlantStage } from '../types.js';
+import { PlantStage, WeatherType } from '../types.js';
 import { createPlant } from './plant.js';
 import { getSpecies } from '../data/plants.js';
 import { resolveHybridOffspring, resolveOffspringColorVariant } from '../data/hybrids.js';
@@ -228,6 +228,9 @@ export function specialPropagationTick(state: GameState): void {
             }
           }
           if (!adjTree) continue;
+        } else if (species.special === 'maple') {
+          // Target: only propagates when the weather is windy
+          if (state.weather.current !== WeatherType.Wind) continue;
         }
 
         targets.push([nr, nc]);

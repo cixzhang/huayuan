@@ -557,7 +557,7 @@ export const DIALOG_POOL: DialogTree[] = [
       { text: '很干的地方', pinyin: 'hěn gān de dìfang', english: 'Very dry places', isCorrect: false },
     ],
     followup: { text: '对，兰花需要细心照顾才能开花。', pinyin: 'duì, lánhuā xūyào xìxīn zhàogù cái néng kāihuā.' },
-    seedReward: 'orchid',
+    seedReward: 'lan',
   },
   {
     id: 'special_maple',
