@@ -8,14 +8,6 @@ import { SEED_ORDER } from '../data/plants.js';
 import { getSpecies } from '../data/plants.js';
 import { createDefaultDialogState } from './birds.js';
 
-// Simple deterministic hash for pseudo-random sequences
-function hash(x: number): number {
-  x = ((x >> 16) ^ x) * 0x45d9f3b;
-  x = ((x >> 16) ^ x) * 0x45d9f3b;
-  x = (x >> 16) ^ x;
-  return (x & 0x7fffffff) / 0x7fffffff;
-}
-
 function generateRiver(grid: Cell[][], rows: number, cols: number): void {
   // River meanders diagonally from top-left area to bottom-right area
   // using a smooth S-curve
@@ -196,8 +188,4 @@ export function createGameState(): GameState {
     nextBirdId: 1,
     dialog: createDefaultDialogState(),
   };
-}
-
-export function resizeGameState(_state: GameState, _termRows: number, _termCols: number): void {
-  // No-op: grid is fixed size and does not resize with the terminal
 }

@@ -1,7 +1,7 @@
 import type { GameState, RenderCell } from '../../types.js';
 import { PlantStage } from '../../types.js';
-import { getSpecies } from '../../data/plants.js';
-import { plantFg, soilBgForWater, PLANT_STYLE } from '../palette.js';
+import { getSpecies, PLANT_SPECIES } from '../../data/plants.js';
+import { plantFg, cellBg, PLANT_STYLE } from '../palette.js';
 
 export function renderFlowerLayer(state: GameState): (RenderCell | null)[][] {
   const { grid, gridRows, gridCols } = state;
@@ -27,7 +27,7 @@ export function renderFlowerLayer(state: GameState): (RenderCell | null)[][] {
         row.push({
           char: species.stages[plant.stage],
           fg: plantFg(plant.speciesId, plant.stage, plant.colorVariant),
-          bg: soilBgForWater(cell.waterLevel),
+          bg: cellBg(cell, 0),
           style: PLANT_STYLE,
         });
       } else {

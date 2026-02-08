@@ -1,7 +1,7 @@
 import type { GameState, RenderCell } from '../../types.js';
 import { PlantStage } from '../../types.js';
 import { getSpecies } from '../../data/plants.js';
-import { plantFg, soilBgForWater, PLANT_STYLE } from '../palette.js';
+import { plantFg, cellBg, PLANT_STYLE } from '../palette.js';
 import { fg } from '../../terminal/ansi.js';
 
 export function renderStemLayer(state: GameState): (RenderCell | null)[][] {
@@ -18,7 +18,7 @@ export function renderStemLayer(state: GameState): (RenderCell | null)[][] {
           row.push({
             char: cell.wildChar,
             fg: fg(65),  // muted green-brown
-            bg: soilBgForWater(cell.waterLevel),
+            bg: cellBg(cell, 0),
             style: '',
           });
           continue;
@@ -38,7 +38,7 @@ export function renderStemLayer(state: GameState): (RenderCell | null)[][] {
         row.push({
           char: species.stages[plant.stage],
           fg: plantFg(plant.speciesId, plant.stage, plant.colorVariant),
-          bg: soilBgForWater(cell.waterLevel),
+          bg: cellBg(cell, 0),
           style: PLANT_STYLE,
         });
       } else {

@@ -210,11 +210,6 @@ export function renderHud(state: GameState, cols: number): RenderCell[][] {
       row2Segments.push({ text: ' ', fg: '', bg: '' });
       row2Segments.push({ text: bDef.hanzi, fg: bColor, bg: '' });
       row2Segments.push({ text: ` ${bDef.name} [t]`, fg: hudFg, bg: '' });
-    } else if (cell?.wildChar) {
-      const wildColor = fg(65);
-      row2Segments.push({ text: ' ', fg: '', bg: '' });
-      row2Segments.push({ text: cell.wildChar, fg: wildColor, bg: '' });
-      row2Segments.push({ text: ' Wild Plant [harvest]', fg: wildColor, bg: '' });
     } else if (cell?.plant) {
       const species = getSpecies(cell.plant.speciesId);
       if (species) {
@@ -226,13 +221,18 @@ export function renderHud(state: GameState, cols: number): RenderCell[][] {
         row2Segments.push({ text: ` ${species.name} [${stageName}] `, fg: hudFg, bg: '' });
         row2Segments.push({ text: bar, fg: fg(82), bg: '' });
       }
+    } else if (cell?.wildChar) {
+      const wildColor = fg(65);
+      row2Segments.push({ text: ' ', fg: '', bg: '' });
+      row2Segments.push({ text: cell.wildChar, fg: wildColor, bg: '' });
+      row2Segments.push({ text: ' Wild Plant', fg: wildColor, bg: '' });
     }
 
     rows.push(renderColoredRow(row2Segments, cols, hudBg));
   }
 
   // === Row 3: Shortened hint text ===
-  const line3 = ' hjkl:move  space:use  tab:tool  s:seed  t:talk  ?:help  :q';
+  const line3 = ' hjkl:move  ␣:use  ⇥:tool  s:seed  t:talk  ?:help  :q';
   rows.push(textToRenderCells(line3, dimFg, hudBg, cols));
 
   return rows;

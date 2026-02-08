@@ -1,6 +1,6 @@
 import type { GameState, RenderCell } from '../../types.js';
 import { fg } from '../../terminal/ansi.js';
-import { soilBgForWater } from '../palette.js';
+import { cellBg, soilBgForWater } from '../palette.js';
 import { BIRD_COLORS } from '../palette.js';
 import { birdMapChar } from '../../data/birds.js';
 import { BIRD_FLAP_RATE } from '../../constants.js';
@@ -21,7 +21,7 @@ export function renderBirdLayer(state: GameState): (RenderCell | null)[][] {
     const flapFrame = Math.floor(bird.animFrame / BIRD_FLAP_RATE);
     const char = birdMapChar(bird.state, bird.direction, flapFrame);
     const cell = state.grid[row]?.[col];
-    const bgColor = cell ? soilBgForWater(cell.waterLevel) : soilBgForWater(0);
+    const bgColor = cell ? cellBg(cell, 0) : soilBgForWater(0);
 
     layer[row][col] = {
       char,

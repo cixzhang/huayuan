@@ -1,5 +1,6 @@
 import { fg, bg, fgRgb, bgRgb, bold } from '../terminal/ansi.js';
 import { getSpecies } from '../data/plants.js';
+import { Cell } from '../types.js';
 
 // ============================================================
 //  Huayuan Color Palette
@@ -79,6 +80,10 @@ export const HELP = {
 };
 
 // --- Helpers (used by layers) ---
+
+export function cellBg(cell: Cell, variant: number): string {
+  return cell.river ? bgRgb(...RIVER.bg[variant]) : soilBgForWater(cell.waterLevel);
+}
 
 export function soilBgForWater(waterLevel: number): string {
   const palette = waterLevel >= 60 ? SOIL.wet

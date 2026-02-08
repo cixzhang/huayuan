@@ -21,7 +21,7 @@ export const WATER_DECAY_PER_TICK = 2; // Water lost per growth tick
 export const WATER_THRESHOLD = 10;     // Minimum water for growth
 
 // Inventory
-export const STARTING_SEEDS: Record<string, number> = {};
+export const STARTING_SEEDS: Record<string, number> = {grass: 3, flower: 3, tree: 3};
 
 // River
 export const RIVER_WATER_RADIUS = 2;       // Tiles around river that get watered

@@ -2,6 +2,7 @@ import { WeatherType } from '../types.js';
 import type { DialogTree } from '../types.js';
 
 // === Dialog Pool ===
+// When updating or adding new dialog, follow the guidelines in `docs/dialog-guidelines.md`
 
 export const DIALOG_POOL: DialogTree[] = [
   // --- Weather dialogs ---

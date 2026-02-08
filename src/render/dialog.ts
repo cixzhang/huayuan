@@ -4,6 +4,8 @@ import { getSpecies } from '../data/plants.js';
 import { HELP } from './palette.js';
 import { fg } from '../terminal/ansi.js';
 import { BIRD_COLORS } from './palette.js';
+import { getCell } from '../game/grid.js';
+import { getBirdArt } from '../game/birds.js';
 
 const BOX_WIDTH = 80;  // terminal columns wide (box spans BOX_WIDTH/2 game cells)
 
@@ -80,7 +82,7 @@ export function renderDialogOverlay(state: GameState, cols: number, gridRows: nu
 
   // Bird art + speech lines side by side
   // Show bird art on lines 3-6
-  const artLines = birdDef.art;
+  const artLines = bird ? getBirdArt(state, bird) : birdDef.art;
   const speechLines: string[] = [];
 
   if (d.phase === 'speech' || d.phase === 'question' || d.phase === 'result') {

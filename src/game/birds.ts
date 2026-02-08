@@ -1,7 +1,8 @@
 import type { GameState, Bird, DialogState, Position } from '../types.js';
 import { BirdType, InputMode } from '../types.js';
 import { BIRD_MAX_COUNT, BIRD_SPAWN_CHANCE, BIRD_REST_DURATION, BIRD_FLY_SPEED } from '../constants.js';
-import { getValidDialogs, getDialogById, resolveSeedReward, BIRD_TYPES } from '../data/birds.js';
+import { getValidDialogs, getDialogById, resolveSeedReward, BIRD_TYPES, getBirdTypeDef } from '../data/birds.js';
+import { getCell } from './grid.js';
 
 // === Bird Spawning & Movement (growth tick) ===
 
@@ -230,4 +231,14 @@ export function exitDialog(state: GameState): void {
 
 export function getBirdAtPosition(state: GameState, row: number, col: number): Bird | undefined {
   return state.birds.find(b => b.position.row === row && b.position.col === col);
+}
+
+export function getBirdArt(state: GameState, bird: Bird): string[] {
+  const birdPosition = bird.position;
+  const birdType = bird ? bird.type : 0;
+  const birdDef = getBirdTypeDef(birdType);
+  const isOverWater = getCell(state, birdPosition)?.river ?? false;
+  const hasArtOnWater = birdDef.artOnWater.length > 0;
+
+  return isOverWater && hasArtOnWater ? birdDef.artOnWater : birdDef.art;
 }
