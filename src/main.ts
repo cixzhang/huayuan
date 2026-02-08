@@ -1,8 +1,9 @@
 import { enterFullScreen, exitFullScreen, onResize, getTerminalSize } from './terminal/screen.js';
 import { startInput, stopInput } from './terminal/input.js';
 import { InputManager } from './input/inputManager.js';
-import { createGameState, resizeGameState } from './game/gameState.js';
+import { createGameState } from './game/gameState.js';
 import { GameLoop } from './game/gameLoop.js';
+import { CELL_WIDTH, HUD_ROWS, MAP_ROWS, MAP_COLS } from './constants.js';
 
 function main(): void {
   const state = createGameState();
@@ -18,18 +19,24 @@ function main(): void {
     exitFullScreen();
   }
 
+  // Compute viewport dimensions that fit the terminal
+  const termSize = getTerminalSize();
+  const viewRows = Math.min(termSize.rows - HUD_ROWS, MAP_ROWS);
+  const viewCols = Math.min(Math.floor(termSize.cols / CELL_WIDTH), MAP_COLS);
+
   const gameLoop = new GameLoop(state, () => {
     cleanup();
     process.exit(0);
-  });
+  }, viewRows, viewCols);
 
   // Enter full-screen terminal mode
   enterFullScreen();
 
-  // Handle resize
+  // Handle resize: only resize the renderer viewport, not the grid
   onResize((size) => {
-    resizeGameState(state, size.rows, size.cols);
-    gameLoop.resizeRenderer(state.gridRows, state.gridCols);
+    const newViewRows = Math.min(size.rows - HUD_ROWS, MAP_ROWS);
+    const newViewCols = Math.min(Math.floor(size.cols / CELL_WIDTH), MAP_COLS);
+    gameLoop.resizeRenderer(newViewRows, newViewCols);
   });
 
   // Handle graceful exit

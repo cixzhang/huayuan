@@ -5,8 +5,45 @@ import { HELP } from './palette.js';
 import { fg } from '../terminal/ansi.js';
 import { BIRD_COLORS } from './palette.js';
 
-const BOX_WIDTH = 52;  // characters wide
-const BOX_HEIGHT = 20; // rows tall
+const BOX_WIDTH = 80;  // terminal columns wide (box spans BOX_WIDTH/2 game cells)
+
+// Chinese punctuation for preferred break points
+const CJK_PUNCTUATION = '，。！？、；：）》」』】';
+
+function wrapText(text: string, maxWidth: number): string[] {
+  if (text.length <= maxWidth) return [text];
+  const lines: string[] = [];
+  let remaining = text;
+  while (remaining.length > 0) {
+    if (remaining.length <= maxWidth) {
+      lines.push(remaining);
+      break;
+    }
+    // Find best break point within maxWidth
+    let breakAt = maxWidth;
+    // Try to break at a space (for mixed/ASCII text)
+    const spaceIdx = remaining.lastIndexOf(' ', maxWidth);
+    if (spaceIdx > maxWidth * 0.3) {
+      breakAt = spaceIdx + 1; // include space at end of current line
+    } else {
+      // Try to break after Chinese punctuation
+      let punctIdx = -1;
+      for (let i = Math.min(maxWidth, remaining.length) - 1; i >= Math.floor(maxWidth * 0.3); i--) {
+        if (CJK_PUNCTUATION.includes(remaining[i])) {
+          punctIdx = i + 1;
+          break;
+        }
+      }
+      if (punctIdx > 0) {
+        breakAt = punctIdx;
+      }
+      // Otherwise just break at maxWidth
+    }
+    lines.push(remaining.slice(0, breakAt));
+    remaining = remaining.slice(breakAt);
+  }
+  return lines;
+}
 
 function fillRow(text: string, width: number): string {
   if (text.length >= width) return text.slice(0, width);
@@ -31,7 +68,9 @@ export function renderDialogOverlay(state: GameState, cols: number, gridRows: nu
   const birdColor = fg(BIRD_COLORS[birdType]);
 
   // Build content lines
-  const innerWidth = BOX_WIDTH - 4; // minus borders + padding
+  // Rendering is in game cells (each = 2 terminal cols). The box is BOX_WIDTH/2 cells wide.
+  // Borders take 2 cells (left ║ + right ║), so displayable content = BOX_WIDTH/2 - 2 chars.
+  const innerWidth = BOX_WIDTH / 2 - 2;
   const contentLines: { text: string; color?: string }[] = [];
 
   // Bird name header
@@ -56,11 +95,18 @@ export function renderDialogOverlay(state: GameState, cols: number, gridRows: nu
     }
   }
 
+  // Wrap speech lines, then combine with art
+  const wrappedSpeech: string[] = [];
+  const speechMaxWidth = innerWidth - 12; // 12 = indent + art padding
+  for (const s of speechLines) {
+    wrappedSpeech.push(...wrapText(s, speechMaxWidth));
+  }
+
   // Combine art and speech
-  const maxArtSpeech = Math.max(artLines.length, speechLines.length);
+  const maxArtSpeech = Math.max(artLines.length, wrappedSpeech.length);
   for (let i = 0; i < maxArtSpeech; i++) {
     const artPart = (i < artLines.length ? artLines[i] : '').padEnd(10);
-    const speechPart = i < speechLines.length ? speechLines[i] : '';
+    const speechPart = i < wrappedSpeech.length ? wrappedSpeech[i] : '';
     const combined = `${artPart}${speechPart}`;
     contentLines.push({ text: '  ' + combined, color: i < artLines.length ? birdColor : undefined });
   }
@@ -70,7 +116,10 @@ export function renderDialogOverlay(state: GameState, cols: number, gridRows: nu
   // Question phase
   if (d.phase === 'question' || d.phase === 'result') {
     contentLines.push({ text: '  ' + '─'.repeat(innerWidth - 4) });
-    contentLines.push({ text: '  ' + tree.question.text });
+    const questionMaxWidth = innerWidth - 4;
+    for (const ql of wrapText(tree.question.text, questionMaxWidth)) {
+      contentLines.push({ text: '  ' + ql });
+    }
     contentLines.push({ text: '' });
 
     for (let i = 0; i < tree.options.length; i++) {
@@ -80,9 +129,23 @@ export function renderDialogOverlay(state: GameState, cols: number, gridRows: nu
           ? (opt.isCorrect ? ' ✓' : ' ✗')
           : '  ')
         : '  ';
-      contentLines.push({
-        text: `  [${i + 1}]${marker} ${opt.text} (${opt.pinyin})`,
-      });
+      // Build option text: show Chinese (pinyin) if present, otherwise just English
+      let optText: string;
+      if (opt.text) {
+        optText = `${opt.text} (${opt.pinyin})`;
+      } else if (opt.english) {
+        optText = opt.english;
+      } else {
+        optText = opt.pinyin;
+      }
+      const wrappedOpt = wrapText(optText, questionMaxWidth - 8);
+      for (let j = 0; j < wrappedOpt.length; j++) {
+        if (j === 0) {
+          contentLines.push({ text: `  [${i + 1}]${marker} ${wrappedOpt[j]}` });
+        } else {
+          contentLines.push({ text: `        ${wrappedOpt[j]}` });
+        }
+      }
     }
   }
 
@@ -90,7 +153,10 @@ export function renderDialogOverlay(state: GameState, cols: number, gridRows: nu
   if (d.phase === 'result') {
     contentLines.push({ text: '' });
     if (d.answeredCorrectly) {
-      contentLines.push({ text: '  ' + tree.followup.text });
+      const followupMaxWidth = innerWidth - 4;
+      for (const fl of wrapText(tree.followup.text, followupMaxWidth)) {
+        contentLines.push({ text: '  ' + fl });
+      }
       if (d.seedAwarded) {
         const species = getSpecies(d.seedAwarded);
         const seedName = species ? `${species.hanzi} ${species.name}` : d.seedAwarded;

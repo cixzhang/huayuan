@@ -210,6 +210,11 @@ export function renderHud(state: GameState, cols: number): RenderCell[][] {
       row2Segments.push({ text: ' ', fg: '', bg: '' });
       row2Segments.push({ text: bDef.hanzi, fg: bColor, bg: '' });
       row2Segments.push({ text: ` ${bDef.name} [t]`, fg: hudFg, bg: '' });
+    } else if (cell?.wildChar) {
+      const wildColor = fg(65);
+      row2Segments.push({ text: ' ', fg: '', bg: '' });
+      row2Segments.push({ text: cell.wildChar, fg: wildColor, bg: '' });
+      row2Segments.push({ text: ' Wild Plant [harvest]', fg: wildColor, bg: '' });
     } else if (cell?.plant) {
       const species = getSpecies(cell.plant.speciesId);
       if (species) {

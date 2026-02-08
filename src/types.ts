@@ -86,6 +86,7 @@ export interface Cell {
   waterLevel: number;         // 0-100
   plant: Plant | null;
   river: boolean;             // true if this cell is part of the river
+  wildChar: string | null;    // decorative wild plant char, harvestable
 }
 
 // === Cursor & Selection ===
@@ -145,6 +146,13 @@ export interface Bird {
   dialogId: string | null;
 }
 
+export type SeedRewardType =
+  | 'random_base' | 'random_hybrid'
+  | 'grass' | 'flower' | 'tree'
+  | 'lotus' | 'cactus' | 'moss'
+  | 'cha' | 'zhu' | 'orchid' | 'maple'
+  | 'fang' | 'miao' | 'guo' | 'tao' | 'ju' | 'mei' | 'lan';
+
 export interface DialogOption {
   text: string;
   pinyin: string;
@@ -164,7 +172,7 @@ export interface DialogTree {
   question: { text: string; pinyin: string };
   options: DialogOption[];
   followup: { text: string; pinyin: string };
-  seedReward: string;
+  seedReward: SeedRewardType;
 }
 
 export interface DialogState {

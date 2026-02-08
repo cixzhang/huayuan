@@ -105,6 +105,17 @@ function waterCell(state: GameState, cell: ReturnType<typeof getCell> & {}): voi
 }
 
 function harvestPlant(state: GameState, cell: ReturnType<typeof getCell> & {}): void {
+  // Check for wild plants first
+  if (cell.wildChar) {
+    cell.wildChar = null;
+    const baseSeeds = ['grass', 'flower', 'tree'];
+    const awarded = baseSeeds[Math.floor(Math.random() * baseSeeds.length)];
+    addSeed(state.inventory, awarded, 1);
+    const species = getSpecies(awarded);
+    setMessage(state, `Foraged a wild plant! +1 ${species?.name || awarded} seed`);
+    return;
+  }
+
   if (!cell.plant) {
     setMessage(state, 'Nothing to harvest here.');
     return;

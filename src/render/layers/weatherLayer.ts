@@ -64,24 +64,74 @@ function renderSunSparkles(
   }
 }
 
+// Cloud templates: 2D patterns where 1=edge (░), 2=center (▒)
+const CLOUD_TEMPLATES = [
+  // 3x5 wide cloud
+  [
+    [0, 1, 1, 1, 0],
+    [1, 2, 2, 2, 1],
+    [0, 1, 1, 1, 0],
+  ],
+  // 2x4 small cloud
+  [
+    [1, 2, 2, 1],
+    [0, 1, 1, 0],
+  ],
+  // 3x6 large cloud
+  [
+    [0, 1, 1, 1, 1, 0],
+    [1, 2, 2, 2, 2, 1],
+    [0, 0, 1, 1, 0, 0],
+  ],
+  // 2x3 tiny cloud
+  [
+    [1, 2, 1],
+    [0, 1, 0],
+  ],
+  // 4x7 big fluffy cloud
+  [
+    [0, 0, 1, 1, 1, 0, 0],
+    [0, 1, 2, 2, 2, 1, 0],
+    [1, 2, 2, 2, 2, 2, 1],
+    [0, 1, 1, 1, 1, 1, 0],
+  ],
+];
+
+// Fixed cloud placements (row, col, templateIndex) — deterministic
+const CLOUD_PLACEMENTS = [
+  { row: 1, col: 3, tmpl: 0 },
+  { row: 5, col: 18, tmpl: 2 },
+  { row: 2, col: 32, tmpl: 1 },
+  { row: 8, col: 10, tmpl: 3 },
+  { row: 4, col: 42, tmpl: 4 },
+];
+
 function renderClouds(
   layer: (RenderCell | null)[][],
   rows: number, cols: number,
   tick: number, intensity: number
 ): void {
-  const cloudChars = ['░', '▒', '░', '·'];
-  const fg = fgRgb(...WEATHER.cloud);
-  // Clouds drift across the whole map (top-down view — clouds are overhead)
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      // Drift offset: clouds move right over time
-      const driftC = (c + Math.floor(tick * 0.5) + r * 3) % cols;
-      const h = cellHash(r, driftC, 42);
-      // Density ~20% at full intensity
-      if (h % 100 < 20 * intensity) {
+  const cloudEdge = '░';
+  const cloudCenter = '▒';
+  const fgColor = fgRgb(...WEATHER.cloud);
+  const drift = Math.floor(tick * 0.3);
+
+  for (const placement of CLOUD_PLACEMENTS) {
+    const tmpl = CLOUD_TEMPLATES[placement.tmpl];
+    for (let tr = 0; tr < tmpl.length; tr++) {
+      for (let tc = 0; tc < tmpl[tr].length; tc++) {
+        const val = tmpl[tr][tc];
+        if (val === 0) continue;
+        // Only render at full intensity; fade edges first
+        if (val === 1 && intensity < 0.5) continue;
+
+        const r = placement.row + tr;
+        const c = ((placement.col + tc + drift) % cols + cols) % cols;
+        if (r < 0 || r >= rows) continue;
+
         layer[r][c] = {
-          char: cloudChars[h % cloudChars.length],
-          fg,
+          char: val === 2 ? cloudCenter : cloudEdge,
+          fg: fgColor,
           bg: '',
           style: '',
         };

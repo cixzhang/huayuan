@@ -8,6 +8,8 @@ export const CELL_WIDTH = 2;        // Each game cell = 2 terminal columns
 export const HUD_ROWS = 3;          // Rows reserved for HUD at bottom
 export const MIN_GRID_ROWS = 5;
 export const MIN_GRID_COLS = 10;
+export const MAP_ROWS = 30;
+export const MAP_COLS = 50;
 
 // Movement
 export const JUMP_DISTANCE = 5;
@@ -19,11 +21,7 @@ export const WATER_DECAY_PER_TICK = 2; // Water lost per growth tick
 export const WATER_THRESHOLD = 10;     // Minimum water for growth
 
 // Inventory
-export const STARTING_SEEDS: Record<string, number> = {
-  grass: 10,
-  flower: 5,
-  tree: 3,
-};
+export const STARTING_SEEDS: Record<string, number> = {};
 
 // River
 export const RIVER_WATER_RADIUS = 2;       // Tiles around river that get watered

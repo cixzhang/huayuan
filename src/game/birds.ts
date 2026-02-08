@@ -20,7 +20,7 @@ function findEmptyTarget(state: GameState, isWaterBird: boolean): Position | nul
     for (let c = 0; c < state.gridCols; c++) {
       const cell = state.grid[r][c];
       // Water birds can land on river cells; land birds cannot
-      const canLand = isWaterBird ? !cell.plant : (!cell.river && !cell.plant);
+      const canLand = isWaterBird ? true : !cell.river;
       if (canLand) {
         const occupied = state.birds.some(b =>
           (b.position.row === r && b.position.col === c) ||

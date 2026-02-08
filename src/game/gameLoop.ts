@@ -16,10 +16,10 @@ export class GameLoop {
   private state: GameState;
   private onQuit: () => void;
 
-  constructor(state: GameState, onQuit: () => void) {
+  constructor(state: GameState, onQuit: () => void, viewRows?: number, viewCols?: number) {
     this.state = state;
     this.onQuit = onQuit;
-    this.renderer = new Renderer(state.gridRows, state.gridCols);
+    this.renderer = new Renderer(viewRows ?? state.gridRows, viewCols ?? state.gridCols);
   }
 
   start(): void {

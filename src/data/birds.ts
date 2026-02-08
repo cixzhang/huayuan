@@ -1,5 +1,5 @@
 import { BirdType } from '../types.js';
-import type { DialogTree, GameState } from '../types.js';
+import type { DialogTree, GameState, SeedRewardType } from '../types.js';
 import { HYBRID_SPECIES } from './hybrids.js';
 import { DIALOG_POOL } from './dialog.js';
 
@@ -138,7 +138,7 @@ export function getDialogById(id: string): DialogTree | undefined {
 
 // === Seed Reward Resolution ===
 
-export function resolveSeedReward(rewardType: string, state: GameState): string {
+export function resolveSeedReward(rewardType: SeedRewardType, state: GameState): string {
   if (rewardType === 'random_base') {
     const bases = ['grass', 'flower', 'tree'];
     return bases[Math.floor(Math.random() * bases.length)];

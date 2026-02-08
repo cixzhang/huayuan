@@ -6,6 +6,7 @@ export function createGrid(rows: number, cols: number): Cell[][] {
       waterLevel: 0,
       plant: null,
       river: false,
+      wildChar: null,
     }))
   );
 }
