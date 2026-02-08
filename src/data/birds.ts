@@ -1,7 +1,26 @@
+import * as fs from 'fs';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
 import { BirdType } from '../types.js';
 import type { DialogTree, GameState, SeedRewardType } from '../types.js';
 import { HYBRID_SPECIES } from './hybrids.js';
 import { DIALOG_POOL } from './dialog.js';
+
+// Merge static dialogs with any generated ones
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const ALL_DIALOGS: DialogTree[] = [...DIALOG_POOL];
+try {
+  const genPath = path.resolve(__dirname, './dialog-generated.json');
+  const raw = fs.readFileSync(genPath, 'utf-8');
+  const parsed = JSON.parse(raw);
+  if (parsed.dialogs && Array.isArray(parsed.dialogs)) {
+    ALL_DIALOGS.push(...(parsed.dialogs as DialogTree[]));
+  }
+} catch {
+  // No generated dialogs file — that's fine
+}
 
 // === Bird Type Definitions ===
 
@@ -122,7 +141,7 @@ function countPlants(state: GameState): number {
 
 export function getValidDialogs(state: GameState): DialogTree[] {
   const plantCount = countPlants(state);
-  return DIALOG_POOL.filter(d => {
+  return ALL_DIALOGS.filter(d => {
     if (!d.conditions) return true;
     if (d.conditions.weather !== undefined && d.conditions.weather !== state.weather.current) return false;
     if (d.conditions.isNight !== undefined && d.conditions.isNight !== state.weather.isNight) return false;
@@ -133,7 +152,7 @@ export function getValidDialogs(state: GameState): DialogTree[] {
 }
 
 export function getDialogById(id: string): DialogTree | undefined {
-  return DIALOG_POOL.find(d => d.id === id);
+  return ALL_DIALOGS.find(d => d.id === id);
 }
 
 // === Seed Reward Resolution ===

@@ -1,3 +1,4 @@
 .claude
 node_modules
 dist
+src/data/dialog-generated.json

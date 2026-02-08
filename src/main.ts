@@ -5,8 +5,11 @@ import { createGameState } from './game/gameState.js';
 import { GameLoop } from './game/gameLoop.js';
 import { AudioSystem } from './audio/audioSystem.js';
 import { CELL_WIDTH, HUD_ROWS, MAP_ROWS, MAP_COLS } from './constants.js';
+import { promptDialogRefresh } from './dialog/dialogRefresh.js';
 
-function main(): void {
+async function main(): Promise<void> {
+  await promptDialogRefresh();
+
   const state = createGameState();
   const inputManager = new InputManager();
   const audioSystem = new AudioSystem();
