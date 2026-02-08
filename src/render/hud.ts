@@ -52,6 +52,7 @@ function weatherDisplay(state: GameState): Segment[] {
   let hanzi: string;
   let name: string;
   switch (w.current) {
+    case WeatherType.Neutral: icon = '·'; hanzi = '和'; name = 'Calm'; break;
     case WeatherType.Clear:  icon = '☀'; hanzi = '晴'; name = 'Sun';   break;
     case WeatherType.Cloudy: icon = '☁'; hanzi = '云'; name = 'Cloud'; break;
     case WeatherType.Rain:   icon = '☂'; hanzi = '雨'; name = 'Rain';  break;

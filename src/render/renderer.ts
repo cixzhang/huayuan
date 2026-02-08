@@ -8,8 +8,8 @@ import { renderBirdLayer } from './layers/birdLayer.js';
 import { renderWeatherLayer } from './layers/weatherLayer.js';
 import { renderHud, renderHelpOverlay } from './hud.js';
 import { renderDialogOverlay } from './dialog.js';
-import { inverse, bgRgb } from '../terminal/ansi.js';
-import { CELL_WIDTH, HUD_ROWS } from '../constants.js';
+import { inverse, bgRgb, fgRgb } from '../terminal/ansi.js';
+import { CELL_WIDTH, HUD_ROWS, NIGHT_DURATION_TICKS, MOON_REFLECTION_RADIUS } from '../constants.js';
 
 export class Renderer {
   private buffer: FrameBuffer;
@@ -104,6 +104,11 @@ export class Renderer {
       }
     }
 
+    // Moon reflection on water at night
+    if (state.weather.nightPhase > 0.5) {
+      this.renderMoonReflection(state);
+    }
+
     // Visual mode selection highlight
     if (state.mode === InputMode.Visual && state.selection) {
       const sel = state.selection;
@@ -171,6 +176,74 @@ export class Renderer {
     const output = this.buffer.flush();
     if (output.length > 0) {
       process.stdout.write(output);
+    }
+  }
+
+  private renderMoonReflection(state: GameState): void {
+    const tick = state.tickCount;
+    const timer = state.weather.dayNightTimer;
+
+    // Moon position drifts across the sky
+    const moonCol = Math.floor(state.gridCols * (0.2 + 0.6 * timer / NIGHT_DURATION_TICKS));
+    const moonRow = Math.floor(state.gridRows * 0.3);
+
+    for (let r = 0; r < state.gridRows; r++) {
+      for (let c = 0; c < state.gridCols; c++) {
+        const cell = state.grid[r][c];
+        if (!cell.river) continue;
+        if (cell.plant) continue;
+
+        // Skip cells with resting birds
+        let hasBird = false;
+        for (const bird of state.birds) {
+          if (bird.state === 'resting' && bird.position.row === r && bird.position.col === c) {
+            hasBird = true;
+            break;
+          }
+        }
+        if (hasBird) continue;
+
+        const dr = r - moonRow;
+        const dc = c - moonCol;
+        const dist = Math.sqrt(dr * dr + dc * dc);
+        if (dist > MOON_REFLECTION_RADIUS) continue;
+
+        // Intensity falls off with distance + shimmer
+        const falloff = 1 - dist / MOON_REFLECTION_RADIUS;
+        const shimmer = 0.5 + 0.5 * Math.sin(tick * 0.5 + r * 2 + c * 3);
+        const intensity = falloff * shimmer;
+
+        if (intensity < 0.1) continue;
+
+        const existing = this.buffer.get(r, c);
+        if (!existing) continue;
+
+        // Blend bg toward silvery (120, 140, 180)
+        const blendAmt = intensity * 0.6;
+        // Parse existing night bg or use defaults
+        const baseR = 30, baseG = 25, baseB = 60;
+        const newR = Math.round(baseR + (120 - baseR) * blendAmt);
+        const newG = Math.round(baseG + (140 - baseG) * blendAmt);
+        const newB = Math.round(baseB + (180 - baseB) * blendAmt);
+
+        const updates: RenderCell = {
+          ...existing,
+          bg: bgRgb(newR, newG, newB),
+        };
+
+        // Brighten fg
+        if (intensity > 0.3) {
+          const fgBright = Math.round(140 + 115 * intensity);
+          updates.fg = fgRgb(fgBright, fgBright, Math.min(255, fgBright + 30));
+        }
+
+        // At high intensity, replace char with glint
+        if (intensity > 0.7) {
+          updates.char = '∘ ';
+        }
+
+        this.buffer.set(r, c, updates);
+      }
     }
   }
 

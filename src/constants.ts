@@ -43,6 +43,8 @@ export const PROPAGATION_WATER_THRESHOLD = 20;    // parent cell needs 20+ water
 export const PROPAGATION_OFFSPRING_WATER = 15;    // water gifted to offspring cell
 export const WATER_DONATION_AMOUNT = 3;           // water donated per tick per neighbor
 export const WATER_DONATION_THRESHOLD = 40;       // cell needs 40+ water to donate
+export const MAPLE_WIND_PROPAGATION_CHANCE = 0.18; // maple propagation chance during wind
+export const ORCHID_PROPAGATION_PENALTY = 0.2;     // orchid (hybridLevel>=4) chance multiplier
 
 // Birds
 export const BIRD_MAX_COUNT = 3;
@@ -50,6 +52,15 @@ export const BIRD_SPAWN_CHANCE = 0.08;
 export const BIRD_REST_DURATION = 20;
 export const BIRD_FLY_SPEED = 2;
 export const BIRD_FLAP_RATE = 5;
+
+// Audio
+export const AUDIO_MAX_SFX = 5;
+export const BIRD_CHIRP_MIN_FRAMES = 60;
+export const BIRD_CHIRP_MAX_FRAMES = 140;
+export const AMBIENT_CROSSFADE_MS = 1500;
+
+// Moon
+export const MOON_REFLECTION_RADIUS = 4;
 
 // Messages
 export const MESSAGE_DURATION_TICKS = 10;

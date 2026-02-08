@@ -102,6 +102,7 @@ export interface Selection {
 
 // === Weather ===
 export enum WeatherType {
+  Neutral = 'neutral',
   Clear = 'clear',
   Cloudy = 'cloudy',
   Rain = 'rain',

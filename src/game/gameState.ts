@@ -159,7 +159,7 @@ export function createGameState(): GameState {
   scatterWildPlants(grid, gridRows, gridCols);
 
   const weather: WeatherState = {
-    current: WeatherType.Clear,
+    current: WeatherType.Neutral,
     intensity: 1.0,
     ticksInState: 0,
     stateDuration: WEATHER_MIN_DURATION + Math.floor(Math.random() * (WEATHER_MAX_DURATION - WEATHER_MIN_DURATION + 1)),

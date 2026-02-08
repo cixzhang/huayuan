@@ -8,6 +8,7 @@ import { useTool, useToolOnArea } from './tools.js';
 import { SEED_ORDER, getSpecies } from '../data/plants.js';
 import { propagationTick, waterDonationTick, specialPropagationTick } from './propagation.js';
 import { birdTick, birdFlyTick, startDialog, advanceDialog, selectDialogOption, exitDialog, getBirdAtPosition } from './birds.js';
+import type { AudioSystem } from '../audio/audioSystem.js';
 
 export class GameLoop {
   private renderTimer: ReturnType<typeof setInterval> | null = null;
@@ -15,10 +16,12 @@ export class GameLoop {
   private renderer: Renderer;
   private state: GameState;
   private onQuit: () => void;
+  private audioSystem: AudioSystem | null;
 
-  constructor(state: GameState, onQuit: () => void, viewRows?: number, viewCols?: number) {
+  constructor(state: GameState, onQuit: () => void, viewRows?: number, viewCols?: number, audioSystem?: AudioSystem) {
     this.state = state;
     this.onQuit = onQuit;
+    this.audioSystem = audioSystem ?? null;
     this.renderer = new Renderer(viewRows ?? state.gridRows, viewCols ?? state.gridCols);
   }
 
@@ -28,7 +31,13 @@ export class GameLoop {
 
     // Render loop at 20fps
     this.renderTimer = setInterval(() => {
-      birdFlyTick(this.state);
+      const landed = birdFlyTick(this.state);
+      if (this.audioSystem && landed.length > 0) {
+        for (const birdType of landed) {
+          this.audioSystem.playChirp(birdType);
+        }
+      }
+      this.audioSystem?.tick(this.state);
       this.renderer.render(this.state);
     }, RENDER_INTERVAL_MS);
 
@@ -106,9 +115,14 @@ export class GameLoop {
         }
         break;
 
-      case GameActionType.UseTool:
+      case GameActionType.UseTool: {
+        const prevMsg = s.message;
         useTool(s, s.cursor);
+        if (s.message !== prevMsg) {
+          this.audioSystem?.playSfx(s.tool);
+        }
         break;
+      }
 
       case GameActionType.UseToolOnSelection:
         if (s.selection) {
@@ -118,6 +132,7 @@ export class GameLoop {
           const minC = Math.min(sel.anchor.col, sel.cursor.col);
           const maxC = Math.max(sel.anchor.col, sel.cursor.col);
           useToolOnArea(s, minR, maxR, minC, maxC);
+          this.audioSystem?.playSfx(s.tool);
           // Exit visual mode after applying
           s.mode = InputMode.Normal;
           s.selection = null;
@@ -200,8 +215,8 @@ export class GameLoop {
 
       case GameActionType.Talk: {
         const bird = getBirdAtPosition(s, s.cursor.row, s.cursor.col);
-        if (bird) {
-          startDialog(s, bird.id);
+        if (bird && startDialog(s, bird.id)) {
+          this.audioSystem?.playChirp(bird.type);
         }
         break;
       }
@@ -229,25 +244,14 @@ export class GameLoop {
   }
 
   private nextWeatherState(current: WeatherType): WeatherType {
-    const roll = Math.random();
-    switch (current) {
-      case WeatherType.Clear:
-        if (roll < 0.6) return WeatherType.Cloudy;
-        if (roll < 0.9) return WeatherType.Wind;
-        return WeatherType.Clear;
-      case WeatherType.Cloudy:
-        if (roll < 0.5) return WeatherType.Rain;
-        if (roll < 0.8) return WeatherType.Clear;
-        return WeatherType.Cloudy;
-      case WeatherType.Rain:
-        if (roll < 0.6) return WeatherType.Cloudy;
-        if (roll < 0.9) return WeatherType.Rain;
-        return WeatherType.Clear;
-      case WeatherType.Wind:
-        if (roll < 0.5) return WeatherType.Clear;
-        if (roll < 0.9) return WeatherType.Cloudy;
-        return WeatherType.Wind;
+    if (current === WeatherType.Neutral) {
+      const roll = Math.random();
+      if (roll < 0.25) return WeatherType.Clear;
+      if (roll < 0.5) return WeatherType.Cloudy;
+      if (roll < 0.75) return WeatherType.Rain;
+      return WeatherType.Wind;
     }
+    return WeatherType.Neutral;
   }
 
   private weatherTick(): void {

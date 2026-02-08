@@ -3,11 +3,14 @@ import { startInput, stopInput } from './terminal/input.js';
 import { InputManager } from './input/inputManager.js';
 import { createGameState } from './game/gameState.js';
 import { GameLoop } from './game/gameLoop.js';
+import { AudioSystem } from './audio/audioSystem.js';
 import { CELL_WIDTH, HUD_ROWS, MAP_ROWS, MAP_COLS } from './constants.js';
 
 function main(): void {
   const state = createGameState();
   const inputManager = new InputManager();
+  const audioSystem = new AudioSystem();
+  audioSystem.init();
 
   let exiting = false;
 
@@ -15,6 +18,7 @@ function main(): void {
     if (exiting) return;
     exiting = true;
     gameLoop.stop();
+    audioSystem.cleanup();
     stopInput();
     exitFullScreen();
   }
@@ -27,7 +31,7 @@ function main(): void {
   const gameLoop = new GameLoop(state, () => {
     cleanup();
     process.exit(0);
-  }, viewRows, viewCols);
+  }, viewRows, viewCols, audioSystem);
 
   // Enter full-screen terminal mode
   enterFullScreen();

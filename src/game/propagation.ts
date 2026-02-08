@@ -11,6 +11,8 @@ import {
   WATER_DONATION_AMOUNT,
   WATER_DONATION_THRESHOLD,
   WATER_MAX,
+  MAPLE_WIND_PROPAGATION_CHANCE,
+  ORCHID_PROPAGATION_PENALTY,
 } from '../constants.js';
 
 // 8-directional neighbor offsets
@@ -54,8 +56,11 @@ export function propagationTick(state: GameState): void {
       if (cell.plant.age < PROPAGATION_MIN_AGE) continue;
       if (cell.waterLevel < PROPAGATION_WATER_THRESHOLD) continue;
 
-      // Roll propagation chance
-      if (Math.random() > PROPAGATION_CHANCE) continue;
+      // Roll propagation chance (orchids are penalized)
+      const chance = (species && species.hybridLevel >= 4)
+        ? PROPAGATION_CHANCE * ORCHID_PROPAGATION_PENALTY
+        : PROPAGATION_CHANCE;
+      if (Math.random() > chance) continue;
 
       // Gather neighbors: empty cells and plant cells
       const emptyCells: [number, number][] = [];
@@ -181,7 +186,10 @@ export function specialPropagationTick(state: GameState): void {
       const species = getSpecies(cell.plant.speciesId);
       if (!species?.special) continue;
 
-      if (Math.random() > PROPAGATION_CHANCE) continue;
+      const specialChance = (species.special === 'maple' && state.weather.current === WeatherType.Wind)
+        ? MAPLE_WIND_PROPAGATION_CHANCE
+        : PROPAGATION_CHANCE;
+      if (Math.random() > specialChance) continue;
 
       // Find valid target cells based on special type
       const targets: [number, number][] = [];

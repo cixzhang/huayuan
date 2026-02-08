@@ -106,7 +106,8 @@ export function birdTick(state: GameState): void {
 
 // === Bird Flying Animation (render tick) ===
 
-export function birdFlyTick(state: GameState): void {
+export function birdFlyTick(state: GameState): BirdType[] {
+  const landed: BirdType[] = [];
   for (let i = state.birds.length - 1; i >= 0; i--) {
     const bird = state.birds[i];
     bird.animFrame++;
@@ -129,6 +130,7 @@ export function birdFlyTick(state: GameState): void {
             bird.state = 'resting';
             bird.restTimer = 0;
             bird.targetPosition = null;
+            landed.push(bird.type);
           } else {
             // Leaving bird reached edge — remove it
             state.birds.splice(i, 1);
@@ -137,6 +139,7 @@ export function birdFlyTick(state: GameState): void {
       }
     }
   }
+  return landed;
 }
 
 // === Dialog State Machine ===

@@ -19,6 +19,8 @@ export function renderWeatherLayer(state: GameState): (RenderCell | null)[][] {
   if (weather.intensity <= 0 && weather.nightPhase <= 0) return layer;
 
   switch (weather.current) {
+    case WeatherType.Neutral:
+      break;
     case WeatherType.Clear:
       renderSunSparkles(layer, gridRows, gridCols, tickCount, weather.intensity);
       break;
@@ -97,13 +99,17 @@ const CLOUD_TEMPLATES = [
   ],
 ];
 
-// Fixed cloud placements (row, col, templateIndex) — deterministic
+// Fixed cloud placements (row, col, templateIndex) — spread across full map
 const CLOUD_PLACEMENTS = [
   { row: 1, col: 3, tmpl: 0 },
   { row: 5, col: 18, tmpl: 2 },
-  { row: 2, col: 32, tmpl: 1 },
-  { row: 8, col: 10, tmpl: 3 },
-  { row: 4, col: 42, tmpl: 4 },
+  { row: 8, col: 38, tmpl: 3 },
+  { row: 12, col: 8, tmpl: 1 },
+  { row: 16, col: 30, tmpl: 4 },
+  { row: 20, col: 5, tmpl: 3 },
+  { row: 20, col: 42, tmpl: 1 },
+  { row: 24, col: 20, tmpl: 0 },
+  { row: 28, col: 35, tmpl: 2 },
 ];
 
 function renderClouds(
@@ -145,10 +151,9 @@ function renderRain(
   rows: number, cols: number,
   tick: number, intensity: number
 ): void {
-  const dropChars = ['│', ',', "'", '│', ','];
   const fg = fgRgb(...WEATHER.rain);
-  // Rain density: 15-30% based on intensity
-  const densityThreshold = Math.floor(15 + 15 * intensity);
+  // Rain density: 5-12% based on intensity (seed cells)
+  const densityThreshold = Math.floor(5 + 7 * intensity);
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -156,12 +161,18 @@ function renderRain(
       const animR = (r + tick * 2) % rows;
       const h = cellHash(animR, c, 77);
       if (h % 100 < densityThreshold) {
-        layer[r][c] = {
-          char: dropChars[h % dropChars.length],
-          fg,
-          bg: '',
-          style: '',
-        };
+        // Create vertical streak: this cell + 1-2 cells below
+        const streakLen = 1 + (h % 3); // 1-3 cells
+        for (let s = 0; s < streakLen; s++) {
+          const sr = r + s;
+          if (sr >= rows) break;
+          layer[sr][c] = {
+            char: s < streakLen - 1 ? '│' : ',',
+            fg,
+            bg: '',
+            style: '',
+          };
+        }
       }
     }
   }
@@ -172,25 +183,27 @@ function renderWind(
   rows: number, cols: number,
   tick: number, intensity: number
 ): void {
-  const windChars = ['─', '~', '─', '~'];
   const fg = fgRgb(...WEATHER.wind);
-  // Wind streaks across middle rows
-  const startRow = Math.floor(rows * 0.2);
-  const endRow = Math.floor(rows * 0.8);
 
-  for (let r = startRow; r < endRow; r++) {
+  for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       // Streaks move right quickly
       const driftC = (c + tick * 3 + r * 7) % cols;
       const h = cellHash(r, driftC, 99);
-      // ~8% density at full intensity
-      if (h % 100 < Math.floor(8 * intensity)) {
-        layer[r][c] = {
-          char: windChars[h % windChars.length],
-          fg,
-          bg: '',
-          style: '',
-        };
+      // ~3% seed density at full intensity
+      if (h % 100 < Math.floor(3 * intensity)) {
+        // Create horizontal streak: 2-4 cells rightward
+        const streakLen = 2 + (h % 3); // 2-4 cells
+        for (let s = 0; s < streakLen; s++) {
+          const sc = c + s;
+          if (sc >= cols) break;
+          layer[r][sc] = {
+            char: s % 2 === 0 ? '─' : '~',
+            fg,
+            bg: '',
+            style: '',
+          };
+        }
       }
     }
   }
