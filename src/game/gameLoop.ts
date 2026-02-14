@@ -701,6 +701,10 @@ export class GameLoop {
     birdTick(s);
   }
 
+  setWeatherEffectsEnabled(enabled: boolean): void {
+    this.renderer.weatherEffectsEnabled = enabled;
+  }
+
   drawBorder(termRows: number, termCols: number): void {
     this.renderer.drawBorder(termRows, termCols);
   }

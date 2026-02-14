@@ -13,6 +13,7 @@ import { inverse, bgRgb, fgRgb, fg, bg, reset, moveTo } from '../terminal/ansi.j
 import { CELL_WIDTH, HUD_ROWS, NIGHT_DURATION_TICKS, MOON_REFLECTION_RADIUS } from '../constants.js';
 
 export class Renderer {
+  weatherEffectsEnabled = true;
   private buffer: FrameBuffer;
   private rowOffset = 0;
   private colOffset = 0;
@@ -108,19 +109,21 @@ export class Renderer {
     }
 
     // Layer 4: Weather effects
-    const weatherCells = renderWeatherLayer(state);
-    for (let r = 0; r < state.gridRows; r++) {
-      for (let c = 0; c < state.gridCols; c++) {
-        const cell = weatherCells[r]?.[c];
-        if (cell) {
-          // Weather overlay: keep ground bg if weather cell has no bg
-          if (!cell.bg) {
-            const existing = this.buffer.get(r, c);
-            if (existing) {
-              cell.bg = existing.bg;
+    if (this.weatherEffectsEnabled) {
+      const weatherCells = renderWeatherLayer(state);
+      for (let r = 0; r < state.gridRows; r++) {
+        for (let c = 0; c < state.gridCols; c++) {
+          const cell = weatherCells[r]?.[c];
+          if (cell) {
+            // Weather overlay: keep ground bg if weather cell has no bg
+            if (!cell.bg) {
+              const existing = this.buffer.get(r, c);
+              if (existing) {
+                cell.bg = existing.bg;
+              }
             }
+            this.buffer.set(r, c, cell);
           }
-          this.buffer.set(r, c, cell);
         }
       }
     }

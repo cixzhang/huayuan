@@ -69,5 +69,8 @@ export const MESSAGE_DURATION_TICKS = 10;
 // Save
 export const SAVE_FILE_PATH = `${process.env.HOME || '~'}/.huayuan-save.json`;
 
+// Settings
+export const SETTINGS_FILE_PATH = `${process.env.HOME || '~'}/.huayuan-settings.json`;
+
 // Dialog Log
 export const MAX_DIALOG_LOG = 50;

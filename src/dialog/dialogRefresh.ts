@@ -1,4 +1,3 @@
-import * as readline from 'readline';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -13,12 +12,6 @@ const MODEL_IDS: Record<string, string> = {
 };
 
 const GENERATED_PATH = path.resolve(__dirname, '../data/dialog-generated.json');
-
-function ask(rl: readline.Interface, question: string): Promise<string> {
-  return new Promise((resolve) => {
-    rl.question(question, (answer) => resolve(answer.trim()));
-  });
-}
 
 function buildSystemPrompt(hskLevel: number, topics: string): string {
   // Read dialog guidelines
@@ -116,30 +109,30 @@ export function restoreDefaultDialog(): void {
   }
 }
 
-export async function generateDialog(mode: 'add' | 'replace'): Promise<void> {
+export interface DialogGenResult {
+  ok: boolean;
+  count: number;
+  error?: string;
+}
+
+export async function generateDialogHeadless(
+  mode: 'add' | 'replace',
+  hskLevel: number,
+  topics: string,
+  model: string,
+): Promise<DialogGenResult> {
   const apiKey = process.env['ANTHROPIC_API_KEY'];
   if (!apiKey) {
-    console.log('Set ANTHROPIC_API_KEY to enable dialog generation.');
-    return;
+    return { ok: false, count: 0, error: 'No API key' };
   }
 
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const level = Math.max(1, Math.min(6, hskLevel));
+  const modelId = MODEL_IDS[model] || MODEL_IDS['haiku'];
+  const systemPrompt = buildSystemPrompt(level, topics);
 
+  let response: Response;
   try {
-    const hskInput = await ask(rl, 'HSK level (1-6, default 3): ');
-    const hskLevel = Math.max(1, Math.min(6, parseInt(hskInput) || 3));
-
-    const topics = await ask(rl, 'Topics of interest (comma-separated, or Enter to skip): ');
-
-    const modelInput = await ask(rl, 'Model (haiku/sonnet/opus, default haiku): ');
-    const modelKey = modelInput.toLowerCase();
-    const modelId = MODEL_IDS[modelKey] || MODEL_IDS['haiku'];
-
-    process.stdout.write('Generating 10 dialogs...');
-
-    const systemPrompt = buildSystemPrompt(hskLevel, topics);
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -155,45 +148,46 @@ export async function generateDialog(mode: 'add' | 'replace'): Promise<void> {
         ],
       }),
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.log(` error (${response.status}): ${errorText}`);
-      return;
-    }
-
-    const data = await response.json() as { content: { type: string; text: string }[] };
-    const textBlock = data.content.find((b) => b.type === 'text');
-    if (!textBlock) {
-      console.log(' error: no text in response');
-      return;
-    }
-
-    const jsonStr = extractJson(textBlock.text);
-    const newDialogs = JSON.parse(jsonStr) as unknown[];
-
-    if (!Array.isArray(newDialogs) || newDialogs.length === 0) {
-      console.log(' error: invalid response format');
-      return;
-    }
-
-    let allDialogs: unknown[] = [];
-    if (mode === 'add') {
-      try {
-        const existing = JSON.parse(fs.readFileSync(GENERATED_PATH, 'utf-8'));
-        if (existing.dialogs && Array.isArray(existing.dialogs)) {
-          allDialogs = existing.dialogs;
-        }
-      } catch {
-        // File doesn't exist yet, start fresh
-      }
-    }
-
-    allDialogs.push(...newDialogs);
-    fs.writeFileSync(GENERATED_PATH, JSON.stringify({ dialogs: allDialogs }, null, 2));
-
-    console.log(` done! (${newDialogs.length} dialogs written)`);
-  } finally {
-    rl.close();
+  } catch (e) {
+    return { ok: false, count: 0, error: `Network error` };
   }
+
+  if (!response.ok) {
+    return { ok: false, count: 0, error: `API ${response.status}` };
+  }
+
+  const data = await response.json() as { content: { type: string; text: string }[] };
+  const textBlock = data.content.find((b) => b.type === 'text');
+  if (!textBlock) {
+    return { ok: false, count: 0, error: 'No text in response' };
+  }
+
+  let newDialogs: unknown[];
+  try {
+    const jsonStr = extractJson(textBlock.text);
+    newDialogs = JSON.parse(jsonStr) as unknown[];
+  } catch {
+    return { ok: false, count: 0, error: 'Invalid JSON' };
+  }
+
+  if (!Array.isArray(newDialogs) || newDialogs.length === 0) {
+    return { ok: false, count: 0, error: 'Empty result' };
+  }
+
+  let allDialogs: unknown[] = [];
+  if (mode === 'add') {
+    try {
+      const existing = JSON.parse(fs.readFileSync(GENERATED_PATH, 'utf-8'));
+      if (existing.dialogs && Array.isArray(existing.dialogs)) {
+        allDialogs = existing.dialogs;
+      }
+    } catch {
+      // File doesn't exist yet, start fresh
+    }
+  }
+
+  allDialogs.push(...newDialogs);
+  fs.writeFileSync(GENERATED_PATH, JSON.stringify({ dialogs: allDialogs }, null, 2));
+
+  return { ok: true, count: newDialogs.length };
 }

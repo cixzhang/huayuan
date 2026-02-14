@@ -45,6 +45,10 @@ export function loadGame(): Partial<SaveData> | null {
   }
 }
 
+export function deleteSave(): boolean {
+  try { fs.unlinkSync(SAVE_FILE_PATH); return true; } catch { return false; }
+}
+
 export function applySavedState(state: GameState, saved: Partial<SaveData>): void {
   if (saved.grid && saved.gridRows && saved.gridCols) {
     state.grid = saved.grid;

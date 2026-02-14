@@ -227,6 +227,12 @@ export interface DialogLogEntry {
   seedReward: string | null;
 }
 
+// === Settings ===
+export interface GameSettings {
+  soundEnabled: boolean;
+  weatherEffectsEnabled: boolean;
+}
+
 // === Game State ===
 export interface GameState {
   grid: Cell[][];

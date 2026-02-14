@@ -43,6 +43,7 @@ const SFX_GENERATORS: Record<string, () => Buffer> = {
 
 export class AudioSystem {
   private enabled = true;
+  private muted = false;
   private tmpDir = '';
   private wavPaths: Record<string, string> = {};
 
@@ -99,8 +100,19 @@ export class AudioSystem {
     }
   }
 
+  setMuted(muted: boolean): void {
+    this.muted = muted;
+    if (muted) {
+      this.stopAmbient();
+    }
+  }
+
+  isMuted(): boolean {
+    return this.muted;
+  }
+
   tick(state: GameState): void {
-    if (!this.enabled) return;
+    if (!this.enabled || this.muted) return;
 
     const isNight = state.weather.nightPhase > 0.5;
     const weather = state.weather.current;
@@ -131,7 +143,7 @@ export class AudioSystem {
   }
 
   playSfx(name: string): void {
-    if (!this.enabled) return;
+    if (!this.enabled || this.muted) return;
     const path = this.wavPaths[`sfx_${name}`];
     if (!path) return;
     if (this.sfxProcesses.size >= AUDIO_MAX_SFX) return;
@@ -210,6 +222,7 @@ export class AudioSystem {
   }
 
   playChirp(birdType: BirdType): void {
+    if (!this.enabled || this.muted) return;
     const path = this.wavPaths[`chirp_${birdType}`];
     if (!path) return;
     if (this.sfxProcesses.size >= AUDIO_MAX_SFX) return;

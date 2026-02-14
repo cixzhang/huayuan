@@ -6,34 +6,63 @@ import { createGameState } from './game/gameState.js';
 import { GameLoop } from './game/gameLoop.js';
 import { AudioSystem } from './audio/audioSystem.js';
 import { CELL_WIDTH, HUD_ROWS, MAP_ROWS, MAP_COLS, MESSAGE_DURATION_TICKS } from './constants.js';
-import { generateDialog } from './dialog/dialogRefresh.js';
-import { loadGame, applySavedState } from './game/save.js';
+import { loadGame, applySavedState, deleteSave } from './game/save.js';
 import { showTitleScreen } from './render/titleScreen.js';
+import { loadSettings } from './game/settings.js';
+import type { SaveInfo } from './render/titleScreen.js';
+
+function computeGrownSpeciesIds(grid: { plant: { speciesId: string } | null }[][]): Set<string> {
+  const ids = new Set<string>();
+  for (const row of grid) {
+    for (const cell of row) {
+      if (cell.plant) {
+        ids.add(cell.plant.speciesId);
+      }
+    }
+  }
+  return ids;
+}
 
 async function main(): Promise<void> {
-  const state = createGameState();
+  let state = createGameState();
 
   // Load saved game if available
-  const saved = loadGame();
+  let saved = loadGame();
   if (saved) {
     applySavedState(state, saved);
   }
 
+  // Create audio system early so title screen can use it
+  const audioSystem = new AudioSystem();
+  audioSystem.init();
+
+  // Load settings and apply mute
+  const settings = loadSettings();
+  audioSystem.setMuted(!settings.soundEnabled);
+
   // Title screen loop
   while (true) {
-    const choice = await showTitleScreen(saved ? {
-      grid: state.grid,
-      tickCount: state.tickCount,
-    } : null);
+    let saveInfo: SaveInfo | null = null;
+    if (saved) {
+      saveInfo = {
+        grid: state.grid,
+        tickCount: state.tickCount,
+        grownSpeciesIds: computeGrownSpeciesIds(state.grid),
+      };
+    }
+
+    const choice = await showTitleScreen(saveInfo, audioSystem, settings);
 
     if (choice === 'quit') {
+      audioSystem.cleanup();
       exitFullScreen();
       process.exit(0);
     }
 
-    if (choice === 'dialog_add' || choice === 'dialog_replace') {
-      exitFullScreen();
-      await generateDialog(choice === 'dialog_add' ? 'add' : 'replace');
+    if (choice === 'delete_save') {
+      deleteSave();
+      saved = null;
+      state = createGameState();
       continue;
     }
 
@@ -50,8 +79,6 @@ async function main(): Promise<void> {
   process.stdout.write(clearScreen + hideCursor + moveTo(0, 0));
 
   const inputManager = new InputManager();
-  const audioSystem = new AudioSystem();
-  audioSystem.init();
 
   let exiting = false;
 
@@ -73,6 +100,9 @@ async function main(): Promise<void> {
     cleanup();
     process.exit(0);
   }, viewRows, viewCols, audioSystem);
+
+  // Apply weather effects setting
+  gameLoop.setWeatherEffectsEnabled(settings.weatherEffectsEnabled);
 
   // Draw centered border
   gameLoop.drawBorder(termSize.rows, termSize.cols);
