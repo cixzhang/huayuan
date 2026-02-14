@@ -18,7 +18,6 @@ interface SaveInfo {
 const BOX_W = 40;
 const BORDER = fg(245);
 const BG = bg(235);
-const TITLE_GREEN = fgRgb(100, 240, 100);
 const TITLE_BROWN = fgRgb(200, 150, 80);
 const GOLD = fg(220);
 const DIM = fg(245);
@@ -88,7 +87,7 @@ function buildScreen(menu: Menu, saveInfo: SaveInfo | null, bird: typeof BIRD_TY
   lines.push(emptyLine(innerW));
 
   // Title
-  const titleContent = `${TITLE_GREEN}花 园${reset}${BG}  ${TITLE_BROWN}Huāyuán${reset}${BG}`;
+  const titleContent = `${TITLE_BROWN}花 园${reset}${BG}  ${TITLE_BROWN}Huāyuán${reset}${BG}`;
   lines.push(boxLine(centerInBox(titleContent, innerW), innerW));
   lines.push(emptyLine(innerW));
 

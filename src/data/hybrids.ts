@@ -170,7 +170,7 @@ export const HYBRID_SPECIES: Record<string, PlantSpecies> = {
   lan: {
     id: 'lan',
     name: 'Orchid',
-    stages: ['◦', '芽', '⌇', '❃', '蘭'],
+    stages: ['◦', '芽', 'ϒ', '❃', '蘭'],
     growthTicks: [6, 8, 10, 14],
     waterNeed: 15,
     hanzi: '蘭',

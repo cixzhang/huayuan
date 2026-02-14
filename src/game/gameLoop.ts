@@ -701,6 +701,14 @@ export class GameLoop {
     birdTick(s);
   }
 
+  drawBorder(termRows: number, termCols: number): void {
+    this.renderer.drawBorder(termRows, termCols);
+  }
+
+  setOffset(row: number, col: number): void {
+    this.renderer.setOffset(row, col);
+  }
+
   resizeRenderer(gridRows: number, gridCols: number): void {
     this.renderer.resize(gridRows, gridCols);
   }

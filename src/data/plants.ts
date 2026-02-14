@@ -43,7 +43,7 @@ export const PLANT_SPECIES: Record<string, PlantSpecies> = {
   tree: {
     id: 'tree',
     name: 'Tree',
-    stages: ['◦', '芽', '〴', '♣', '木'],
+    stages: ['◦', '芽', '↟', '♣', '木'],
     growthTicks: [4, 6, 8, 10],
     waterNeed: 12,
     hanzi: '木',
@@ -62,7 +62,7 @@ export const PLANT_SPECIES: Record<string, PlantSpecies> = {
   lotus: {
     id: 'lotus',
     name: 'Lotus',
-    stages: ['◦', '芽', '⌇', '❁', '莲'],
+    stages: ['◦', '芽', '◌̲', '❁', '莲'],
     growthTicks: [3, 5, 6, 8],
     waterNeed: 6,
     hanzi: '莲',
@@ -82,7 +82,7 @@ export const PLANT_SPECIES: Record<string, PlantSpecies> = {
   cactus: {
     id: 'cactus',
     name: 'Cactus',
-    stages: ['◦', '芽', '⌇', '⌘', '仙'],
+    stages: ['◦', '芽', '⁂', '⌘', '仙'],
     growthTicks: [4, 6, 8, 10],
     waterNeed: 3,
     hanzi: '仙人掌',
@@ -102,7 +102,7 @@ export const PLANT_SPECIES: Record<string, PlantSpecies> = {
   moss: {
     id: 'moss',
     name: 'Moss',
-    stages: ['◦', '芽', '⌇', 'ϒ', '苔'],
+    stages: ['◦', '芽', '•', '※', '苔'],
     growthTicks: [2, 3, 4, 5],
     waterNeed: 4,
     hanzi: '苔',

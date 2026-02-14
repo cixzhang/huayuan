@@ -64,20 +64,25 @@ async function main(): Promise<void> {
     exitFullScreen();
   }
 
-  // Compute viewport dimensions that fit the terminal
+  // Compute viewport dimensions that fit the terminal (account for border: 2 rows, 2 cols)
   const termSize = getTerminalSize();
-  const viewRows = Math.min(termSize.rows - HUD_ROWS, MAP_ROWS);
-  const viewCols = Math.min(Math.floor(termSize.cols / CELL_WIDTH), MAP_COLS);
+  const viewRows = Math.min(termSize.rows - HUD_ROWS - 2, MAP_ROWS);
+  const viewCols = Math.min(Math.floor((termSize.cols - 2) / CELL_WIDTH), MAP_COLS);
 
   const gameLoop = new GameLoop(state, () => {
     cleanup();
     process.exit(0);
   }, viewRows, viewCols, audioSystem);
 
+  // Draw centered border
+  gameLoop.drawBorder(termSize.rows, termSize.cols);
+
   // Handle resize: only resize the renderer viewport, not the grid
   onResize((size) => {
-    const newViewRows = Math.min(size.rows - HUD_ROWS, MAP_ROWS);
-    const newViewCols = Math.min(Math.floor(size.cols / CELL_WIDTH), MAP_COLS);
+    const newViewRows = Math.min(size.rows - HUD_ROWS - 2, MAP_ROWS);
+    const newViewCols = Math.min(Math.floor((size.cols - 2) / CELL_WIDTH), MAP_COLS);
+    process.stdout.write(clearScreen);
+    gameLoop.drawBorder(size.rows, size.cols);
     gameLoop.resizeRenderer(newViewRows, newViewCols);
   });
 

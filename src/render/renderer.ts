@@ -9,14 +9,56 @@ import { renderWeatherLayer } from './layers/weatherLayer.js';
 import { renderHud, renderHelpOverlay } from './hud.js';
 import { renderDialogOverlay } from './dialog.js';
 import { renderDialogLog } from './dialogLog.js';
-import { inverse, bgRgb, fgRgb } from '../terminal/ansi.js';
+import { inverse, bgRgb, fgRgb, fg, bg, reset, moveTo } from '../terminal/ansi.js';
 import { CELL_WIDTH, HUD_ROWS, NIGHT_DURATION_TICKS, MOON_REFLECTION_RADIUS } from '../constants.js';
 
 export class Renderer {
   private buffer: FrameBuffer;
+  private rowOffset = 0;
+  private colOffset = 0;
 
   constructor(gridRows: number, gridCols: number) {
     this.buffer = new FrameBuffer(gridRows + HUD_ROWS, gridCols);
+  }
+
+  setOffset(row: number, col: number): void {
+    this.rowOffset = row;
+    this.colOffset = col;
+    this.buffer.rowOffset = row;
+    this.buffer.colOffset = col;
+  }
+
+  drawBorder(termRows: number, termCols: number): void {
+    const gameRows = this.buffer.rows;          // viewRows + HUD_ROWS
+    const gameWidth = this.buffer.cols * CELL_WIDTH; // terminal columns
+
+    const rowOff = Math.floor((termRows - (gameRows + 2)) / 2) + 1;
+    const colOff = Math.floor((termCols - (gameWidth + 2)) / 2) + 1;
+
+    this.setOffset(rowOff, colOff);
+
+    const BORDER = fg(245);
+    const BG = bg(235);
+
+    let out = '';
+
+    // Top border
+    out += moveTo(rowOff - 1, colOff - 1);
+    out += `${BORDER}${BG}╔${'═'.repeat(gameWidth)}╗${reset}`;
+
+    // Side borders
+    for (let r = 0; r < gameRows; r++) {
+      out += moveTo(rowOff + r, colOff - 1);
+      out += `${BORDER}${BG}║${reset}`;
+      out += moveTo(rowOff + r, colOff + gameWidth);
+      out += `${BORDER}${BG}║${reset}`;
+    }
+
+    // Bottom border
+    out += moveTo(rowOff + gameRows, colOff - 1);
+    out += `${BORDER}${BG}╚${'═'.repeat(gameWidth)}╝${reset}`;
+
+    process.stdout.write(out);
   }
 
   render(state: GameState): void {
@@ -262,5 +304,7 @@ export class Renderer {
 
   resize(gridRows: number, gridCols: number): void {
     this.buffer = new FrameBuffer(gridRows + HUD_ROWS, gridCols);
+    this.buffer.rowOffset = this.rowOffset;
+    this.buffer.colOffset = this.colOffset;
   }
 }

@@ -20,6 +20,8 @@ export class FrameBuffer {
   private previous: RenderCell[][];
   readonly rows: number;
   readonly cols: number;
+  rowOffset = 0;
+  colOffset = 0;
 
   constructor(rows: number, cols: number) {
     this.rows = rows;
@@ -70,7 +72,7 @@ export class FrameBuffer {
           curr.style !== prev.style
         ) {
           // Position: each game cell is CELL_WIDTH terminal columns
-          out += moveTo(r, c * CELL_WIDTH);
+          out += moveTo(r + this.rowOffset, c * CELL_WIDTH + this.colOffset);
           out += curr.style + curr.fg + curr.bg;
 
           // Full-width chars (CJK) already occupy 2 columns; pad others with a space
