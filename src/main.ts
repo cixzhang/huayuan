@@ -1,25 +1,53 @@
-import { enterFullScreen, exitFullScreen, onResize, getTerminalSize } from './terminal/screen.js';
+import { exitFullScreen, onResize, getTerminalSize } from './terminal/screen.js';
+import { clearScreen, hideCursor, moveTo } from './terminal/ansi.js';
 import { startInput, stopInput } from './terminal/input.js';
 import { InputManager } from './input/inputManager.js';
 import { createGameState } from './game/gameState.js';
 import { GameLoop } from './game/gameLoop.js';
 import { AudioSystem } from './audio/audioSystem.js';
 import { CELL_WIDTH, HUD_ROWS, MAP_ROWS, MAP_COLS, MESSAGE_DURATION_TICKS } from './constants.js';
-import { promptDialogRefresh } from './dialog/dialogRefresh.js';
+import { generateDialog } from './dialog/dialogRefresh.js';
 import { loadGame, applySavedState } from './game/save.js';
+import { showTitleScreen } from './render/titleScreen.js';
 
 async function main(): Promise<void> {
-  await promptDialogRefresh();
-
   const state = createGameState();
 
   // Load saved game if available
   const saved = loadGame();
   if (saved) {
     applySavedState(state, saved);
+  }
+
+  // Title screen loop
+  while (true) {
+    const choice = await showTitleScreen(saved ? {
+      grid: state.grid,
+      tickCount: state.tickCount,
+    } : null);
+
+    if (choice === 'quit') {
+      exitFullScreen();
+      process.exit(0);
+    }
+
+    if (choice === 'dialog_add' || choice === 'dialog_replace') {
+      exitFullScreen();
+      await generateDialog(choice === 'dialog_add' ? 'add' : 'replace');
+      continue;
+    }
+
+    // choice === 'start'
+    break;
+  }
+
+  // Prepare screen for game
+  if (saved) {
     state.message = 'Game loaded';
     state.messageExpiry = state.tickCount + MESSAGE_DURATION_TICKS;
   }
+
+  process.stdout.write(clearScreen + hideCursor + moveTo(0, 0));
 
   const inputManager = new InputManager();
   const audioSystem = new AudioSystem();
@@ -45,9 +73,6 @@ async function main(): Promise<void> {
     cleanup();
     process.exit(0);
   }, viewRows, viewCols, audioSystem);
-
-  // Enter full-screen terminal mode
-  enterFullScreen();
 
   // Handle resize: only resize the renderer viewport, not the grid
   onResize((size) => {

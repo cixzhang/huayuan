@@ -3,13 +3,18 @@
   "version": "1.0.0",
   "description": "A CLI garden game that teaches vim commands and Chinese vocabulary",
   "type": "module",
+  "bin": {
+    "huayuan": "./bin/huayuan.js"
+  },
   "scripts": {
     "start": "npx tsx src/main.ts",
     "dev": "npx tsx --watch src/main.ts"
   },
+  "dependencies": {
+    "tsx": "^4.7.0"
+  },
   "devDependencies": {
     "@types/node": "^25.2.1",
-    "tsx": "^4.7.0",
     "typescript": "^5.4.0"
   },
   "author": "Cindy Zhang",

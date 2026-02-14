@@ -96,24 +96,38 @@ function extractJson(text: string): string {
   return text.trim();
 }
 
-export async function promptDialogRefresh(): Promise<void> {
+export function getGeneratedDialogCount(): number {
+  try {
+    const data = JSON.parse(fs.readFileSync(GENERATED_PATH, 'utf-8'));
+    if (data.dialogs && Array.isArray(data.dialogs)) {
+      return data.dialogs.length;
+    }
+  } catch {
+    // File doesn't exist
+  }
+  return 0;
+}
+
+export function restoreDefaultDialog(): void {
+  try {
+    fs.unlinkSync(GENERATED_PATH);
+  } catch {
+    // File didn't exist
+  }
+}
+
+export async function generateDialog(mode: 'add' | 'replace'): Promise<void> {
   const apiKey = process.env['ANTHROPIC_API_KEY'];
   if (!apiKey) {
-    console.log('Note: Set ANTHROPIC_API_KEY to enable dialog generation.');
+    console.log('Set ANTHROPIC_API_KEY to enable dialog generation.');
     return;
   }
 
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
   try {
-    const generate = await ask(rl, 'Generate fresh bird dialog? (y/N): ');
-    if (generate.toLowerCase() !== 'y') return;
-
     const hskInput = await ask(rl, 'HSK level (1-6, default 3): ');
     const hskLevel = Math.max(1, Math.min(6, parseInt(hskInput) || 3));
-
-    const modeInput = await ask(rl, 'Replace existing generated dialog or add to it? (replace/add, default add): ');
-    const mode = modeInput.toLowerCase() === 'replace' ? 'replace' : 'add';
 
     const topics = await ask(rl, 'Topics of interest (comma-separated, or Enter to skip): ');
 
