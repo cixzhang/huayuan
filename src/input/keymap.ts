@@ -25,6 +25,9 @@ const normalMap: Record<string, GameActionType> = {
   '1': GameActionType.SelectTool1,
   '2': GameActionType.SelectTool2,
   '3': GameActionType.SelectTool3,
+  p: GameActionType.Paste,
+  x: GameActionType.DeletePlantAtCursor,
+  G: GameActionType.JumpBottom,
 };
 
 const dialogMap: Record<string, GameActionType> = {
@@ -34,6 +37,10 @@ const dialogMap: Record<string, GameActionType> = {
   space: GameActionType.DialogAdvance,
   return: GameActionType.DialogAdvance,
   escape: GameActionType.DialogExit,
+  j: GameActionType.DialogScrollDown,
+  k: GameActionType.DialogScrollUp,
+  down: GameActionType.DialogScrollDown,
+  up: GameActionType.DialogScrollUp,
 };
 
 const visualMap: Record<string, GameActionType> = {
@@ -49,6 +56,26 @@ const visualMap: Record<string, GameActionType> = {
   b: GameActionType.JumpLeft,
   space: GameActionType.UseToolOnSelection,
   escape: GameActionType.ExitVisual,
+  y: GameActionType.Yank,
+  d: GameActionType.DeletePlants,
+};
+
+const helpMap: Record<string, GameActionType> = {
+  j: GameActionType.HelpScrollDown,
+  k: GameActionType.HelpScrollUp,
+  down: GameActionType.HelpScrollDown,
+  up: GameActionType.HelpScrollUp,
+  escape: GameActionType.HelpExit,
+  q: GameActionType.HelpExit,
+};
+
+const logMap: Record<string, GameActionType> = {
+  j: GameActionType.LogScrollDown,
+  k: GameActionType.LogScrollUp,
+  down: GameActionType.LogScrollDown,
+  up: GameActionType.LogScrollUp,
+  escape: GameActionType.LogExit,
+  q: GameActionType.LogExit,
 };
 
 export function resolveKey(key: KeyPress, mode: InputMode): GameActionType | null {
@@ -57,9 +84,14 @@ export function resolveKey(key: KeyPress, mode: InputMode): GameActionType | nul
     return GameActionType.Quit;
   }
 
-  // ? toggles help in any mode
+  // ? toggles help in any mode except Help (where it exits)
   if (key.sequence === '?') {
+    if (mode === InputMode.Help) return GameActionType.HelpExit;
     return GameActionType.ToggleHelp;
+  }
+
+  if (mode === InputMode.Help) {
+    return helpMap[key.name] || helpMap[key.sequence] || null;
   }
 
   if (mode === InputMode.Normal) {
@@ -67,7 +99,11 @@ export function resolveKey(key: KeyPress, mode: InputMode): GameActionType | nul
     if (key.sequence === ':') {
       return GameActionType.EnterCommand;
     }
-    return normalMap[key.name] || normalMap[key.sequence] || null;
+    // Check uppercase sequence first (G)
+    if (key.sequence && normalMap[key.sequence]) {
+      return normalMap[key.sequence];
+    }
+    return normalMap[key.name] || null;
   }
 
   if (mode === InputMode.Visual) {
@@ -76,6 +112,10 @@ export function resolveKey(key: KeyPress, mode: InputMode): GameActionType | nul
 
   if (mode === InputMode.Dialog) {
     return dialogMap[key.name] || dialogMap[key.sequence] || null;
+  }
+
+  if (mode === InputMode.Log) {
+    return logMap[key.name] || logMap[key.sequence] || null;
   }
 
   return null;

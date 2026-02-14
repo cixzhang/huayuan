@@ -180,8 +180,15 @@ export function renderDialogOverlay(state: GameState, cols: number, gridRows: nu
     contentLines.push({ text: '  [Space or Esc to close]' });
   }
 
+  // Trim from top if content exceeds available space, so question/options stay visible
+  const maxContentRows = gridRows - 2; // 2 for top/bottom borders
+  let visibleContent = contentLines;
+  if (contentLines.length > maxContentRows) {
+    visibleContent = contentLines.slice(contentLines.length - maxContentRows);
+  }
+
   // Now render into the grid overlay
-  const totalHeight = Math.min(contentLines.length + 2, gridRows); // +2 for top/bottom borders
+  const totalHeight = Math.min(visibleContent.length + 2, gridRows); // +2 for top/bottom borders
   const startRow = Math.max(0, Math.floor((gridRows - totalHeight) / 2));
   const startCol = Math.max(0, Math.floor((cols - BOX_WIDTH / 2) / 2));
 
@@ -221,8 +228,8 @@ export function renderDialogOverlay(state: GameState, cols: number, gridRows: nu
 
       // Content lines
       const contentIdx = lineIdx - 1;
-      if (contentIdx >= 0 && contentIdx < contentLines.length) {
-        const line = contentLines[contentIdx];
+      if (contentIdx >= 0 && contentIdx < visibleContent.length) {
+        const line = visibleContent[contentIdx];
         if (charIdx === 0) {
           row.push({ char: '║', fg: HELP.fg, bg: HELP.bg, style: '' });
         } else if (charIdx === BOX_WIDTH / 2 - 1) {

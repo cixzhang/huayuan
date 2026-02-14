@@ -1,6 +1,6 @@
-import type { GameState, Bird, DialogState, Position } from '../types.js';
+import type { GameState, Bird, DialogState, DialogLogEntry, Position } from '../types.js';
 import { BirdType, InputMode } from '../types.js';
-import { BIRD_MAX_COUNT, BIRD_SPAWN_CHANCE, BIRD_REST_DURATION, BIRD_FLY_SPEED } from '../constants.js';
+import { BIRD_MAX_COUNT, BIRD_SPAWN_CHANCE, BIRD_REST_DURATION, BIRD_FLY_SPEED, MAX_DIALOG_LOG } from '../constants.js';
 import { getValidDialogs, getDialogById, resolveSeedReward, BIRD_TYPES, getBirdTypeDef } from '../data/birds.js';
 import { getCell } from './grid.js';
 
@@ -154,6 +154,7 @@ function defaultDialogState(): DialogState {
     selectedOption: -1,
     answeredCorrectly: null,
     seedAwarded: null,
+    pinyinScroll: 0,
   };
 }
 
@@ -178,6 +179,7 @@ export function startDialog(state: GameState, birdId: number): boolean {
     selectedOption: -1,
     answeredCorrectly: null,
     seedAwarded: null,
+    pinyinScroll: 0,
   };
   state.mode = InputMode.Dialog;
   return true;
@@ -195,6 +197,7 @@ export function advanceDialog(state: GameState): void {
 
   if (d.phase === 'speech') {
     d.lineIndex++;
+    d.pinyinScroll = 0;
     if (d.lineIndex >= tree.lines.length) {
       d.phase = 'question';
       d.selectedOption = -1;
@@ -213,6 +216,7 @@ export function selectDialogOption(state: GameState, optionIndex: number): void 
 
   d.selectedOption = optionIndex;
   d.answeredCorrectly = tree.options[optionIndex].isCorrect;
+  d.pinyinScroll = 0;
 
   if (d.answeredCorrectly) {
     const seedId = resolveSeedReward(tree.seedReward, state);
@@ -228,8 +232,55 @@ export function selectDialogOption(state: GameState, optionIndex: number): void 
 }
 
 export function exitDialog(state: GameState): void {
+  // Log the completed dialog
+  if (state.dialog.active && state.dialog.answeredCorrectly !== null) {
+    const tree = getDialogById(state.dialog.treeId);
+    const bird = state.birds.find(b => b.id === state.dialog.birdId);
+    if (tree && bird) {
+      const entry: DialogLogEntry = {
+        birdType: bird.type,
+        treeId: state.dialog.treeId,
+        answeredCorrectly: state.dialog.answeredCorrectly,
+        tick: state.tickCount,
+        lines: tree.lines,
+        question: tree.question,
+        options: tree.options,
+        followup: tree.followup,
+        seedReward: state.dialog.seedAwarded,
+      };
+      state.dialogLog.push(entry);
+      if (state.dialogLog.length > MAX_DIALOG_LOG) {
+        state.dialogLog.shift();
+      }
+    }
+  }
   state.dialog = defaultDialogState();
   state.mode = InputMode.Normal;
+}
+
+export function forceBirdSpawn(state: GameState, birdType: BirdType): void {
+  const birdDef = BIRD_TYPES[birdType];
+  const target = findEmptyTarget(state, birdDef.isWaterBird);
+  if (!target) return;
+
+  const { position, direction } = randomEdgePosition(state.gridRows, state.gridCols);
+  const validDialogs = getValidDialogs(state);
+  const dialogId = validDialogs.length > 0
+    ? validDialogs[Math.floor(Math.random() * validDialogs.length)].id
+    : null;
+
+  const bird: Bird = {
+    id: state.nextBirdId++,
+    type: birdType,
+    position,
+    state: 'flying',
+    direction,
+    restTimer: 0,
+    animFrame: 0,
+    targetPosition: target,
+    dialogId,
+  };
+  state.birds.push(bird);
 }
 
 export function getBirdAtPosition(state: GameState, row: number, col: number): Bird | undefined {

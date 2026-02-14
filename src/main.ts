@@ -4,13 +4,23 @@ import { InputManager } from './input/inputManager.js';
 import { createGameState } from './game/gameState.js';
 import { GameLoop } from './game/gameLoop.js';
 import { AudioSystem } from './audio/audioSystem.js';
-import { CELL_WIDTH, HUD_ROWS, MAP_ROWS, MAP_COLS } from './constants.js';
+import { CELL_WIDTH, HUD_ROWS, MAP_ROWS, MAP_COLS, MESSAGE_DURATION_TICKS } from './constants.js';
 import { promptDialogRefresh } from './dialog/dialogRefresh.js';
+import { loadGame, applySavedState } from './game/save.js';
 
 async function main(): Promise<void> {
   await promptDialogRefresh();
 
   const state = createGameState();
+
+  // Load saved game if available
+  const saved = loadGame();
+  if (saved) {
+    applySavedState(state, saved);
+    state.message = 'Game loaded';
+    state.messageExpiry = state.tickCount + MESSAGE_DURATION_TICKS;
+  }
+
   const inputManager = new InputManager();
   const audioSystem = new AudioSystem();
   audioSystem.init();

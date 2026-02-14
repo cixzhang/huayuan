@@ -1,14 +1,16 @@
 import type { GameState, GameAction } from '../types.js';
-import { GameActionType, ToolType, InputMode, WeatherType, PlantStage } from '../types.js';
+import { GameActionType, ToolType, InputMode, WeatherType, PlantStage, BirdType } from '../types.js';
 import { Renderer } from '../render/renderer.js';
-import { RENDER_INTERVAL_MS, GROWTH_TICK_MS, JUMP_DISTANCE, WATER_DECAY_PER_TICK, MESSAGE_DURATION_TICKS, RIVER_WATER_RADIUS, RIVER_WATER_AMOUNT, WATER_MAX, WEATHER_MIN_DURATION, WEATHER_MAX_DURATION, WEATHER_TRANSITION_TICKS, RAIN_WATER_PER_TICK, NIGHT_GROWTH_PENALTY, DAY_DURATION_TICKS, NIGHT_DURATION_TICKS } from '../constants.js';
+import { RENDER_INTERVAL_MS, GROWTH_TICK_MS, JUMP_DISTANCE, WATER_DECAY_PER_TICK, BARE_WATER_DECAY_PER_TICK, MESSAGE_DURATION_TICKS, RIVER_WATER_RADIUS, RIVER_WATER_AMOUNT, WATER_MAX, WEATHER_MIN_DURATION, WEATHER_MAX_DURATION, WEATHER_TRANSITION_TICKS, RAIN_WATER_PER_TICK, NIGHT_GROWTH_PENALTY, DAY_DURATION_TICKS, NIGHT_DURATION_TICKS } from '../constants.js';
 import { clampPosition } from './grid.js';
 import { growPlant } from './plant.js';
 import { useTool, useToolOnArea } from './tools.js';
-import { SEED_ORDER, getSpecies } from '../data/plants.js';
+import { SEED_ORDER, getSpecies, PLANT_SPECIES } from '../data/plants.js';
 import { propagationTick, waterDonationTick, specialPropagationTick } from './propagation.js';
-import { birdTick, birdFlyTick, startDialog, advanceDialog, selectDialogOption, exitDialog, getBirdAtPosition } from './birds.js';
+import { birdTick, birdFlyTick, startDialog, advanceDialog, selectDialogOption, exitDialog, getBirdAtPosition, forceBirdSpawn } from './birds.js';
 import type { AudioSystem } from '../audio/audioSystem.js';
+import { yankSelection, pasteClipboard, deletePlants, deletePlantAtCursor, findChar, terraform } from './magic.js';
+import { saveGame } from './save.js';
 
 export class GameLoop {
   private renderTimer: ReturnType<typeof setInterval> | null = null;
@@ -210,7 +212,28 @@ export class GameLoop {
         break;
 
       case GameActionType.ToggleHelp:
-        s.showHelp = !s.showHelp;
+        if (!s.showHelp) {
+          s.showHelp = true;
+          s.mode = InputMode.Help;
+          s.helpScroll = 0;
+        } else {
+          s.showHelp = false;
+          s.mode = InputMode.Normal;
+        }
+        break;
+
+      case GameActionType.HelpScrollUp:
+        s.helpScroll = Math.max(0, s.helpScroll - 1);
+        break;
+
+      case GameActionType.HelpScrollDown:
+        // Max is set dynamically during render; just increment here (renderer clamps)
+        s.helpScroll++;
+        break;
+
+      case GameActionType.HelpExit:
+        s.showHelp = false;
+        s.mode = InputMode.Normal;
         break;
 
       case GameActionType.Talk: {
@@ -240,7 +263,282 @@ export class GameLoop {
       case GameActionType.DialogExit:
         exitDialog(s);
         break;
+
+      case GameActionType.DialogScrollUp:
+        s.dialog.pinyinScroll = Math.max(0, s.dialog.pinyinScroll - 1);
+        break;
+
+      case GameActionType.DialogScrollDown:
+        s.dialog.pinyinScroll++;
+        break;
+
+      case GameActionType.Yank: {
+        const count = yankSelection(s);
+        if (count > 0) {
+          s.message = `Yanked ${count} plant${count > 1 ? 's' : ''}`;
+          s.messageExpiry = s.tickCount + MESSAGE_DURATION_TICKS;
+        }
+        s.mode = InputMode.Normal;
+        break;
+      }
+
+      case GameActionType.Paste: {
+        const count = pasteClipboard(s);
+        if (count > 0) {
+          s.message = `Pasted ${count} plant${count > 1 ? 's' : ''}`;
+          s.messageExpiry = s.tickCount + MESSAGE_DURATION_TICKS;
+        } else if (!s.clipboard) {
+          s.message = 'Nothing to paste';
+          s.messageExpiry = s.tickCount + MESSAGE_DURATION_TICKS;
+        }
+        break;
+      }
+
+      case GameActionType.DeletePlants: {
+        const count = deletePlants(s);
+        if (count > 0) {
+          s.message = `Harvested ${count} plant${count > 1 ? 's' : ''} → seeds`;
+          s.messageExpiry = s.tickCount + MESSAGE_DURATION_TICKS;
+        }
+        s.mode = InputMode.Normal;
+        break;
+      }
+
+      case GameActionType.DeletePlantAtCursor: {
+        const ok = deletePlantAtCursor(s);
+        if (ok) {
+          s.message = 'Plant removed → +1 seed';
+          s.messageExpiry = s.tickCount + MESSAGE_DURATION_TICKS;
+        }
+        break;
+      }
+
+      case GameActionType.FindChar: {
+        const ch = action.payload as string;
+        if (!findChar(s, ch)) {
+          s.message = `'${ch}' not found`;
+          s.messageExpiry = s.tickCount + MESSAGE_DURATION_TICKS;
+        }
+        break;
+      }
+
+      case GameActionType.JumpTop:
+        s.cursor = clampPosition(s, { row: 0, col: s.cursor.col });
+        break;
+
+      case GameActionType.JumpBottom:
+        s.cursor = clampPosition(s, { row: s.gridRows - 1, col: s.cursor.col });
+        break;
+
+      case GameActionType.OpenLog:
+        s.mode = InputMode.Log;
+        s.logScroll = 0;
+        break;
+
+      case GameActionType.LogScrollDown:
+        s.logScroll = Math.min(s.logScroll + 1, Math.max(0, s.dialogLog.length - 1));
+        break;
+
+      case GameActionType.LogScrollUp:
+        s.logScroll = Math.max(0, s.logScroll - 1);
+        break;
+
+      case GameActionType.LogExit:
+        s.mode = InputMode.Normal;
+        break;
+
+      case GameActionType.ExecuteCommand:
+        this.handleExecuteCommand(s, action.payload as Record<string, string>);
+        break;
     }
+  }
+
+  private handleExecuteCommand(s: GameState, payload: Record<string, string>): void {
+    const { command } = payload;
+
+    switch (command) {
+      case 'save': {
+        const ok = saveGame(s);
+        s.message = ok ? 'Game saved' : 'Save failed';
+        s.messageExpiry = s.tickCount + MESSAGE_DURATION_TICKS;
+        break;
+      }
+
+      case 'tool': {
+        const arg = payload.arg;
+        const toolMap: Record<string, ToolType> = {
+          plant: ToolType.Plant, p: ToolType.Plant,
+          water: ToolType.Water, w: ToolType.Water,
+          harvest: ToolType.Harvest, h: ToolType.Harvest,
+        };
+        const tool = toolMap[arg];
+        if (tool) {
+          s.tool = tool;
+          s.message = `Tool: ${tool}`;
+          s.messageExpiry = s.tickCount + MESSAGE_DURATION_TICKS;
+        } else {
+          s.message = `Unknown tool: ${arg}`;
+          s.messageExpiry = s.tickCount + MESSAGE_DURATION_TICKS;
+        }
+        break;
+      }
+
+      case 'seed': {
+        const arg = payload.arg;
+        // Find species by name or id
+        let found: string | null = null;
+        for (const [id, species] of Object.entries(PLANT_SPECIES)) {
+          if (id === arg || species.name.toLowerCase() === arg.toLowerCase()) {
+            found = id;
+            break;
+          }
+        }
+        if (found) {
+          s.selectedSeed = found;
+          s.tool = ToolType.Plant;
+          const species = getSpecies(found);
+          s.message = `Seed: ${species?.hanzi || ''} ${species?.name || found}`;
+          s.messageExpiry = s.tickCount + MESSAGE_DURATION_TICKS;
+        } else {
+          s.message = `Unknown seed: ${arg}`;
+          s.messageExpiry = s.tickCount + MESSAGE_DURATION_TICKS;
+        }
+        break;
+      }
+
+      case 'summon': {
+        const arg = payload.arg.toLowerCase();
+        const birdMap: Record<string, BirdType> = {
+          robin: BirdType.Robin,
+          sparrow: BirdType.Sparrow,
+          duck: BirdType.Duck,
+          goose: BirdType.Goose,
+        };
+        const birdType = birdMap[arg];
+        if (birdType !== undefined) {
+          forceBirdSpawn(s, birdType);
+          s.message = `Summoned ${arg}`;
+          s.messageExpiry = s.tickCount + MESSAGE_DURATION_TICKS;
+        } else {
+          s.message = `Unknown bird: ${arg}`;
+          s.messageExpiry = s.tickCount + MESSAGE_DURATION_TICKS;
+        }
+        break;
+      }
+
+      case 'weather': {
+        const arg = payload.arg.toLowerCase();
+        const weatherMap: Record<string, WeatherType> = {
+          neutral: WeatherType.Neutral, calm: WeatherType.Neutral,
+          clear: WeatherType.Clear, sun: WeatherType.Clear, sunny: WeatherType.Clear,
+          cloudy: WeatherType.Cloudy, cloud: WeatherType.Cloudy,
+          rain: WeatherType.Rain, rainy: WeatherType.Rain,
+          wind: WeatherType.Wind, windy: WeatherType.Wind,
+        };
+        const weather = weatherMap[arg];
+        if (weather !== undefined) {
+          s.weather.current = weather;
+          s.weather.ticksInState = 0;
+          s.weather.intensity = 1.0;
+          s.message = `Weather: ${weather}`;
+          s.messageExpiry = s.tickCount + MESSAGE_DURATION_TICKS;
+        } else {
+          s.message = `Unknown weather: ${arg}`;
+          s.messageExpiry = s.tickCount + MESSAGE_DURATION_TICKS;
+        }
+        break;
+      }
+
+      case 'play': {
+        const arg = payload.arg.toLowerCase();
+        const birdSounds: Record<string, BirdType> = {
+          robin: BirdType.Robin,
+          sparrow: BirdType.Sparrow,
+          duck: BirdType.Duck,
+          goose: BirdType.Goose,
+        };
+        const birdType = birdSounds[arg];
+        if (birdType !== undefined) {
+          this.audioSystem?.playChirp(birdType);
+          s.message = `Playing: ${arg}`;
+          s.messageExpiry = s.tickCount + MESSAGE_DURATION_TICKS;
+        } else {
+          this.audioSystem?.playSfx(arg);
+          s.message = `Playing: ${arg}`;
+          s.messageExpiry = s.tickCount + MESSAGE_DURATION_TICKS;
+        }
+        break;
+      }
+
+      case 'terraform':
+        terraform(s);
+        s.message = s.grid[s.cursor.row][s.cursor.col].river ? 'Terraformed → river' : 'Terraformed → land';
+        s.messageExpiry = s.tickCount + MESSAGE_DURATION_TICKS;
+        break;
+
+      case 'expand': {
+        const dir = payload.dir;
+        const amount = parseInt(payload.amount || '1', 10) || 1;
+        this.expandGrid(s, dir, amount);
+        break;
+      }
+    }
+  }
+
+  private expandGrid(s: GameState, dir: string, amount: number): void {
+    switch (dir) {
+      case 'n': {
+        // Add rows to top
+        for (let i = 0; i < amount; i++) {
+          const row = Array.from({ length: s.gridCols }, () => ({
+            waterLevel: 0, plant: null, river: false, wildChar: null,
+          }));
+          s.grid.unshift(row);
+        }
+        s.gridRows += amount;
+        s.cursor.row += amount;
+        break;
+      }
+      case 's': {
+        // Add rows to bottom
+        for (let i = 0; i < amount; i++) {
+          const row = Array.from({ length: s.gridCols }, () => ({
+            waterLevel: 0, plant: null, river: false, wildChar: null,
+          }));
+          s.grid.push(row);
+        }
+        s.gridRows += amount;
+        break;
+      }
+      case 'e': {
+        // Add columns to right
+        for (const row of s.grid) {
+          for (let i = 0; i < amount; i++) {
+            row.push({ waterLevel: 0, plant: null, river: false, wildChar: null });
+          }
+        }
+        s.gridCols += amount;
+        break;
+      }
+      case 'w': {
+        // Add columns to left
+        for (const row of s.grid) {
+          for (let i = 0; i < amount; i++) {
+            row.unshift({ waterLevel: 0, plant: null, river: false, wildChar: null });
+          }
+        }
+        s.gridCols += amount;
+        s.cursor.col += amount;
+        break;
+      }
+      default:
+        s.message = `Unknown direction: ${dir}`;
+        s.messageExpiry = s.tickCount + MESSAGE_DURATION_TICKS;
+        return;
+    }
+    s.message = `Expanded ${dir} by ${amount}`;
+    s.messageExpiry = s.tickCount + MESSAGE_DURATION_TICKS;
+    this.renderer.resize(s.gridRows, s.gridCols);
   }
 
   private nextWeatherState(current: WeatherType): WeatherType {
@@ -356,8 +654,10 @@ export class GameLoop {
         const cell = s.grid[r][c];
 
         // Water decay (skip river cells — they stay full)
+        // Bare ground dries faster than planted ground
         if (cell.waterLevel > 0 && !cell.river) {
-          cell.waterLevel = Math.max(0, cell.waterLevel - WATER_DECAY_PER_TICK);
+          const decay = cell.plant ? WATER_DECAY_PER_TICK : BARE_WATER_DECAY_PER_TICK;
+          cell.waterLevel = Math.max(0, cell.waterLevel - decay);
         }
 
         // Plant growth (night slows growth — skip half the ticks)

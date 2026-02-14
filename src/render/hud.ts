@@ -102,46 +102,69 @@ export function renderHud(state: GameState, cols: number): RenderCell[][] {
   const dimFg = HUD.fgDim;
   const waterColor = fg(75);
 
-  // === Dialog mode: rows 1 & 2 show pinyin ===
+  // === Dialog mode: rows 1-2 show scrollable pinyin, row 3 hints ===
   if (state.mode === InputMode.Dialog && state.dialog.active) {
     const tree = getDialogById(state.dialog.treeId);
     const d = state.dialog;
 
-    // Row 1: accumulated speech pinyin
-    let row1Text = ' ';
-    if (tree) {
-      const pinyinParts: string[] = [];
-      if (d.phase === 'speech') {
-        for (let i = 0; i <= Math.min(d.lineIndex, tree.lines.length - 1); i++) {
-          pinyinParts.push(tree.lines[i].pinyin);
-        }
+    // Build pinyin content lines, wrapping long text across multiple lines
+    const pinyinLines: string[] = [];
+    const wrapWidth = cols - 1; // leave 1 char left margin
+
+    const wrapPinyin = (text: string): void => {
+      if (text.length <= wrapWidth) {
+        pinyinLines.push(' ' + text);
       } else {
-        for (let i = 0; i < tree.lines.length; i++) {
-          pinyinParts.push(tree.lines[i].pinyin);
+        let remaining = text;
+        while (remaining.length > 0) {
+          const chunk = remaining.slice(0, wrapWidth);
+          pinyinLines.push(' ' + chunk);
+          remaining = remaining.slice(wrapWidth);
         }
       }
-      row1Text = ' ' + pinyinParts.join('  ');
-    }
-    rows.push(textToRenderCells(row1Text.slice(0, cols), dimFg, hudBg, cols));
+    };
 
-    // Row 2: question pinyin or followup/failure pinyin
-    let row2Text = '';
     if (tree) {
+      // Speech pinyin
+      if (d.phase === 'speech') {
+        const idx = Math.min(d.lineIndex, tree.lines.length - 1);
+        wrapPinyin(`[${idx + 1}/${tree.lines.length}] ${tree.lines[idx].pinyin}`);
+      } else {
+        // In question/result, show last speech line
+        const last = tree.lines.length - 1;
+        wrapPinyin(`[${tree.lines.length}/${tree.lines.length}] ${tree.lines[last].pinyin}`);
+      }
+
+      // Question/result pinyin
       if (d.phase === 'question') {
-        row2Text = ' ' + tree.question.pinyin;
+        wrapPinyin(tree.question.pinyin);
       } else if (d.phase === 'result') {
         if (d.answeredCorrectly) {
-          row2Text = ' ' + tree.followup.pinyin;
+          wrapPinyin(tree.followup.pinyin);
         } else {
-          row2Text = ' bú duì! xià cì zài shìshi ba.';
+          wrapPinyin('bú duì! xià cì zài shìshi ba.');
         }
       }
     }
-    rows.push(textToRenderCells(row2Text.slice(0, cols), dimFg, hudBg, cols));
 
-    // Row 3: dialog hints
-    const line3 = ' space:advance  1/2/3:answer  esc:exit';
-    rows.push(textToRenderCells(line3, dimFg, hudBg, cols));
+    // 2 visible rows for pinyin content
+    const visiblePinyinRows = 2;
+    const maxScroll = Math.max(0, pinyinLines.length - visiblePinyinRows);
+    if (d.pinyinScroll > maxScroll) d.pinyinScroll = maxScroll;
+    const canScroll = pinyinLines.length > visiblePinyinRows;
+
+    for (let i = 0; i < visiblePinyinRows; i++) {
+      const lineIdx = i + d.pinyinScroll;
+      const text = lineIdx < pinyinLines.length ? pinyinLines[lineIdx] : '';
+      rows.push(textToRenderCells(text.slice(0, cols), dimFg, hudBg, cols));
+    }
+
+    // Row 3: dialog hints + scroll indicator
+    let line3 = ' space:advance  1/2/3:answer  esc:exit';
+    if (canScroll) {
+      line3 += `  j/k:pinyin [${d.pinyinScroll + 1}/${pinyinLines.length}]`;
+    }
+    rows.push(textToRenderCells(line3.slice(0, cols), dimFg, hudBg, cols));
     return rows;
   }
 
@@ -174,15 +197,40 @@ export function renderHud(state: GameState, cols: number): RenderCell[][] {
   // Weather segment
   segments.push(...weatherDisplay(state));
 
-  // [VISUAL] right-aligned if in visual mode
+  // Clipboard indicator
+  if (state.clipboard) {
+    let plantCount = 0;
+    for (const row of state.clipboard.cells) {
+      for (const cell of row) {
+        if (cell) plantCount++;
+      }
+    }
+    segments.push({ text: ' | ', fg: dimFg, bg: '' });
+    segments.push({ text: `[Y:${plantCount}]`, fg: fg(220), bg: '' });
+  }
+
+  // Right-aligned mode tags
   if (state.mode === InputMode.Visual) {
-    // Calculate how many chars we've used so far
     let usedLen = 0;
     for (const seg of segments) usedLen += seg.text.length;
     const visualTag = '[VISUAL]';
     const padding = Math.max(1, cols - usedLen - visualTag.length);
     segments.push({ text: ' '.repeat(padding), fg: '', bg: '' });
     segments.push({ text: visualTag, fg: fg(201), bg: '' });
+  } else if (state.mode === InputMode.Help) {
+    let usedLen = 0;
+    for (const seg of segments) usedLen += seg.text.length;
+    const helpTag = '[HELP]';
+    const padding = Math.max(1, cols - usedLen - helpTag.length);
+    segments.push({ text: ' '.repeat(padding), fg: '', bg: '' });
+    segments.push({ text: helpTag, fg: fg(220), bg: '' });
+  } else if (state.mode === InputMode.Log) {
+    let usedLen = 0;
+    for (const seg of segments) usedLen += seg.text.length;
+    const logTag = '[LOG]';
+    const padding = Math.max(1, cols - usedLen - logTag.length);
+    segments.push({ text: ' '.repeat(padding), fg: '', bg: '' });
+    segments.push({ text: logTag, fg: fg(220), bg: '' });
   }
 
   rows.push(renderColoredRow(segments, cols, hudBg));
@@ -233,66 +281,86 @@ export function renderHud(state: GameState, cols: number): RenderCell[][] {
   }
 
   // === Row 3: Shortened hint text ===
-  const line3 = ' hjkl:move  ␣:use  ⇥:tool  s:seed  t:talk  ?:help  :q';
+  let line3: string;
+  if (state.mode === InputMode.Help) {
+    line3 = ' j/k:scroll  ?/esc:exit';
+  } else if (state.mode === InputMode.Log) {
+    line3 = ' j/k:scroll  esc:exit';
+  } else {
+    line3 = ' hjkl:move  ␣:use  ⇥:tool  s:seed  t:talk  ?:help  :q';
+  }
   rows.push(textToRenderCells(line3, dimFg, hudBg, cols));
 
   return rows;
 }
 
-export function renderHelpOverlay(_state: GameState, cols: number, gridRows: number): RenderCell[][] {
-  const lines = [
-    '╔══════════════════════════════════════╗',
-    '║         花 园  Huāyuán  Help           ║',
-    '║                                      ║',
-    '║  Movement:                           ║',
-    '║    h/j/k/l  Move cursor              ║',
-    '║    w/b      Jump 5 cells             ║',
-    '║                                      ║',
-    '║  Tools:                              ║',
-    '║    1        Plant tool               ║',
-    '║    2        Water tool               ║',
-    '║    3        Harvest tool             ║',
-    '║    tab      Cycle tools              ║',
-    '║    space    Use current tool         ║',
-    '║    s        Cycle seed type          ║',
-    '║                                      ║',
-    '║  Modes:                              ║',
-    '║    v        Visual select mode       ║',
-    '║    :q       Quit                     ║',
-    '║    ?        Toggle this help         ║',
-    '║    Esc      Return to normal         ║',
-    '║                                      ║',
-    '║  Grow plants: plant → water → wait   ║',
-    '╚══════════════════════════════════════╝',
+export function renderHelpOverlay(state: GameState, cols: number, gridRows: number): RenderCell[][] {
+  const helpContent = [
+    '  花 园  Huāyuán  Help',
+    '',
+    '  Movement:',
+    '    h/j/k/l  Move cursor',
+    '    w/b      Jump 5 cells',
+    '    G/gg     Jump bottom/top',
+    '    f<char>  Find character',
+    '',
+    '  Tools:',
+    '    1        Plant tool',
+    '    2        Water tool',
+    '    3        Harvest tool',
+    '    tab      Cycle tools',
+    '    space    Use current tool',
+    '    s        Cycle seed type',
+    '    x        Delete plant at cursor',
+    '',
+    '  Visual mode (v):',
+    '    y        Yank (copy) plants',
+    '    d        Delete plants → seeds',
+    '    p        Paste yanked plants',
+    '',
+    '  Commands:',
+    '    :w       Save  :log  Dialog log',
+    '    :tool <name>   Switch tool',
+    '    :seed <name>   Switch seed',
+    '    :summon <bird>  Summon bird',
+    '    :terraform     Toggle river/land',
+    '    :q       Quit',
+    '    ?        Toggle this help',
+    '',
+    '  Grow plants: plant → water → wait',
   ];
 
+  // Clamp scroll so last line is reachable but not past it
+  const visibleRows = gridRows - 1; // reserve 1 row for scroll indicator
+  const maxScroll = Math.max(0, helpContent.length - visibleRows);
+  if (state.helpScroll > maxScroll) state.helpScroll = maxScroll;
+
+  const scrollOffset = state.helpScroll;
   const overlay: RenderCell[][] = [];
-  const startRow = Math.max(0, Math.floor((gridRows - lines.length) / 2));
-  const boxWidth = 40; // chars in the box
-  const startCol = Math.max(0, Math.floor((cols - boxWidth / 2) / 2));
 
   for (let r = 0; r < gridRows; r++) {
     const row: RenderCell[] = [];
-    const lineIdx = r - startRow;
-    const line = lineIdx >= 0 && lineIdx < lines.length ? lines[lineIdx] : null;
-
-    for (let c = 0; c < cols; c++) {
-      if (line) {
-        const charIdx = c - startCol;
-        // Each line char maps to one cell (will be 2 terminal cols)
-        // But box chars are single-width, so we need to handle this carefully
-        if (charIdx >= 0 && charIdx < line.length) {
-          row.push({
-            char: line[charIdx],
-            fg: HELP.fg,
-            bg: HELP.bg,
-            style: '',
-          });
-        } else {
-          row.push({ char: ' ', fg: '', bg: '', style: '' });
-        }
-      } else {
-        row.push({ char: ' ', fg: '', bg: '', style: '' });
+    if (r < visibleRows) {
+      const lineIdx = r + scrollOffset;
+      const line = lineIdx < helpContent.length ? helpContent[lineIdx] : '';
+      for (let c = 0; c < cols; c++) {
+        row.push({
+          char: c < line.length ? line[c] : ' ',
+          fg: HELP.fg,
+          bg: HELP.bg,
+          style: '',
+        });
+      }
+    } else {
+      // Bottom row: scroll indicator
+      const indicator = `  j/k:scroll  ?/esc:exit  [${scrollOffset + 1}/${helpContent.length}]`;
+      for (let c = 0; c < cols; c++) {
+        row.push({
+          char: c < indicator.length ? indicator[c] : ' ',
+          fg: HUD.fgDim,
+          bg: HELP.bg,
+          style: '',
+        });
       }
     }
     overlay.push(row);

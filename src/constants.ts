@@ -17,8 +17,9 @@ export const JUMP_DISTANCE = 5;
 // Water
 export const WATER_AMOUNT = 30;       // Water added per tool use
 export const WATER_MAX = 100;
-export const WATER_DECAY_PER_TICK = 2; // Water lost per growth tick
-export const WATER_THRESHOLD = 10;     // Minimum water for growth
+export const WATER_DECAY_PER_TICK = 2;      // Water lost per growth tick (planted cells)
+export const BARE_WATER_DECAY_PER_TICK = 4; // Water lost per growth tick (bare ground)
+export const WATER_THRESHOLD = 10;          // Minimum water for growth
 
 // Inventory
 export const STARTING_SEEDS: Record<string, number> = {grass: 3, flower: 3, tree: 3};
@@ -31,7 +32,7 @@ export const RIVER_WATER_AMOUNT = 8;       // Water added per tick to nearby til
 export const WEATHER_MIN_DURATION = 8;        // min growth ticks per state
 export const WEATHER_MAX_DURATION = 15;       // max growth ticks per state
 export const WEATHER_TRANSITION_TICKS = 3;    // ticks to ramp intensity up/down
-export const RAIN_WATER_PER_TICK = 4;         // water added to ALL cells when raining
+export const RAIN_WATER_PER_TICK = 6;         // water added to ALL cells when raining
 export const NIGHT_GROWTH_PENALTY = 0.5;      // growth ticks count half at night
 export const DAY_DURATION_TICKS = 40;         // ~2 min of day
 export const NIGHT_DURATION_TICKS = 20;       // ~1 min of night
@@ -43,8 +44,8 @@ export const PROPAGATION_WATER_THRESHOLD = 20;    // parent cell needs 20+ water
 export const PROPAGATION_OFFSPRING_WATER = 15;    // water gifted to offspring cell
 export const WATER_DONATION_AMOUNT = 3;           // water donated per tick per neighbor
 export const WATER_DONATION_THRESHOLD = 40;       // cell needs 40+ water to donate
-export const MAPLE_WIND_PROPAGATION_CHANCE = 0.18; // maple propagation chance during wind
-export const ORCHID_PROPAGATION_PENALTY = 0.2;     // orchid (hybridLevel>=4) chance multiplier
+export const MAPLE_WIND_PROPAGATION_CHANCE = 0.45; // maple propagation chance during wind
+export const ORCHID_PROPAGATION_PENALTY = 0;       // orchid (hybridLevel>=4) cannot propagate
 
 // Birds
 export const BIRD_MAX_COUNT = 3;
@@ -64,3 +65,9 @@ export const MOON_REFLECTION_RADIUS = 4;
 
 // Messages
 export const MESSAGE_DURATION_TICKS = 10;
+
+// Save
+export const SAVE_FILE_PATH = `${process.env.HOME || '~'}/.huayuan-save.json`;
+
+// Dialog Log
+export const MAX_DIALOG_LOG = 50;

@@ -4,6 +4,8 @@ export enum InputMode {
   Visual = 'visual',
   Command = 'command',
   Dialog = 'dialog',
+  Log = 'log',
+  Help = 'help',
 }
 
 // === Game Actions ===
@@ -34,6 +36,23 @@ export enum GameActionType {
   DialogSelect2 = 'dialogSelect2',
   DialogSelect3 = 'dialogSelect3',
   DialogExit = 'dialogExit',
+  Yank = 'yank',
+  Paste = 'paste',
+  DeletePlants = 'deletePlants',
+  DeletePlantAtCursor = 'deletePlantAtCursor',
+  FindChar = 'findChar',
+  JumpBottom = 'jumpBottom',
+  JumpTop = 'jumpTop',
+  OpenLog = 'openLog',
+  LogScrollUp = 'logScrollUp',
+  LogScrollDown = 'logScrollDown',
+  LogExit = 'logExit',
+  HelpScrollUp = 'helpScrollUp',
+  HelpScrollDown = 'helpScrollDown',
+  HelpExit = 'helpExit',
+  DialogScrollUp = 'dialogScrollUp',
+  DialogScrollDown = 'dialogScrollDown',
+  ExecuteCommand = 'executeCommand',
 }
 
 export interface GameAction {
@@ -185,6 +204,27 @@ export interface DialogState {
   selectedOption: number;
   answeredCorrectly: boolean | null;
   seedAwarded: string | null;
+  pinyinScroll: number;
+}
+
+// === Clipboard (for yank/paste) ===
+export interface Clipboard {
+  cells: (Plant | null)[][];
+  width: number;
+  height: number;
+}
+
+// === Dialog Log ===
+export interface DialogLogEntry {
+  birdType: BirdType;
+  treeId: string;
+  answeredCorrectly: boolean;
+  tick: number;
+  lines: { text: string; pinyin: string }[];
+  question: { text: string; pinyin: string };
+  options: DialogOption[];
+  followup: { text: string; pinyin: string };
+  seedReward: string | null;
 }
 
 // === Game State ===
@@ -207,4 +247,8 @@ export interface GameState {
   birds: Bird[];
   nextBirdId: number;
   dialog: DialogState;
+  clipboard: Clipboard | null;
+  dialogLog: DialogLogEntry[];
+  logScroll: number;
+  helpScroll: number;
 }

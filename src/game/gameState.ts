@@ -187,5 +187,9 @@ export function createGameState(): GameState {
     birds: [],
     nextBirdId: 1,
     dialog: createDefaultDialogState(),
+    clipboard: null,
+    dialogLog: [],
+    logScroll: 0,
+    helpScroll: 0,
   };
 }

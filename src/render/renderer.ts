@@ -8,6 +8,7 @@ import { renderBirdLayer } from './layers/birdLayer.js';
 import { renderWeatherLayer } from './layers/weatherLayer.js';
 import { renderHud, renderHelpOverlay } from './hud.js';
 import { renderDialogOverlay } from './dialog.js';
+import { renderDialogLog } from './dialogLog.js';
 import { inverse, bgRgb, fgRgb } from '../terminal/ansi.js';
 import { CELL_WIDTH, HUD_ROWS, NIGHT_DURATION_TICKS, MOON_REFLECTION_RADIUS } from '../constants.js';
 
@@ -158,6 +159,18 @@ export class Renderer {
         for (let c = 0; c < dialogOverlay[r].length; c++) {
           if (dialogOverlay[r][c].char !== ' ' || dialogOverlay[r][c].bg !== '') {
             this.buffer.set(r, c, dialogOverlay[r][c]);
+          }
+        }
+      }
+    }
+
+    // Dialog log overlay
+    if (state.mode === InputMode.Log) {
+      const logOverlay = renderDialogLog(state, this.buffer.cols, state.gridRows);
+      for (let r = 0; r < logOverlay.length; r++) {
+        for (let c = 0; c < logOverlay[r].length; c++) {
+          if (logOverlay[r][c].char !== ' ' || logOverlay[r][c].bg !== '') {
+            this.buffer.set(r, c, logOverlay[r][c]);
           }
         }
       }
