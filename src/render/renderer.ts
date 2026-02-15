@@ -97,17 +97,6 @@ export class Renderer {
       }
     }
 
-    // Layer 3.5: Birds
-    const birdCells = renderBirdLayer(state);
-    for (let r = 0; r < state.gridRows; r++) {
-      for (let c = 0; c < state.gridCols; c++) {
-        const cell = birdCells[r]?.[c];
-        if (cell) {
-          this.buffer.set(r, c, cell);
-        }
-      }
-    }
-
     // Layer 4: Weather effects
     if (this.weatherEffectsEnabled) {
       const weatherCells = renderWeatherLayer(state);
@@ -124,6 +113,17 @@ export class Renderer {
             }
             this.buffer.set(r, c, cell);
           }
+        }
+      }
+    }
+
+    // Layer 5: Birds (after weather so they appear on top)
+    const birdCells = renderBirdLayer(state);
+    for (let r = 0; r < state.gridRows; r++) {
+      for (let c = 0; c < state.gridCols; c++) {
+        const cell = birdCells[r]?.[c];
+        if (cell) {
+          this.buffer.set(r, c, cell);
         }
       }
     }

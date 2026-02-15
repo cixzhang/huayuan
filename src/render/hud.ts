@@ -58,6 +58,9 @@ function weatherDisplay(state: GameState): Segment[] {
     case WeatherType.Rain:   icon = '☂'; hanzi = '雨'; name = 'Rain';  break;
     case WeatherType.Wind:   icon = '≋'; hanzi = '风'; name = 'Wind';  break;
   }
+  if ((w.isNight || w.nightPhase > 0.1) && w.current === WeatherType.Clear) {
+    icon = '☾'; name = 'Clear';
+  }
   const filled = Math.ceil(w.intensity * 3);
   const dots = '●'.repeat(filled) + '○'.repeat(3 - filled);
   let nightStr = '';

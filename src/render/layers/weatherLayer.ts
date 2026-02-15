@@ -186,23 +186,35 @@ function renderWind(
   const fg = fgRgb(...WEATHER.wind);
 
   for (let r = 0; r < rows; r++) {
+    // Group adjacent rows so streaks align across 2 rows
+    const groupRow = Math.floor(r / 2);
     for (let c = 0; c < cols; c++) {
-      // Streaks move right quickly
-      const driftC = (c + tick * 3 + r * 7) % cols;
-      const h = cellHash(r, driftC, 99);
+      // Use groupRow for hash so paired rows share streak positions
+      const driftC = (c + tick * 3 + groupRow * 7) % cols;
+      const h = cellHash(groupRow, driftC, 99);
       // ~3% seed density at full intensity
       if (h % 100 < Math.floor(3 * intensity)) {
-        // Create horizontal streak: 2-4 cells rightward
-        const streakLen = 2 + (h % 3); // 2-4 cells
+        // Longer streaks: 3-6 cells rightward
+        const streakLen = 3 + (h % 4); // 3-6 cells
         for (let s = 0; s < streakLen; s++) {
           const sc = c + s;
           if (sc >= cols) break;
-          layer[r][sc] = {
-            char: s % 2 === 0 ? '─' : '~',
-            fg,
-            bg: '',
-            style: '',
-          };
+          // Last character is a gust curl
+          if (s === streakLen - 1) {
+            layer[r][sc] = {
+              char: r % 2 === 0 ? '╮' : '╯',
+              fg,
+              bg: '',
+              style: '',
+            };
+          } else {
+            layer[r][sc] = {
+              char: s % 2 === 0 ? '─' : '~',
+              fg,
+              bg: '',
+              style: '',
+            };
+          }
         }
       }
     }

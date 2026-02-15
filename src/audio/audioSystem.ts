@@ -118,11 +118,10 @@ export class AudioSystem {
     const weather = state.weather.current;
 
     // Determine if ambient should be silent
-    const silent = !isNight && (
+    const silent = weather === WeatherType.Cloudy || (!isNight && (
       weather === WeatherType.Neutral ||
-      weather === WeatherType.Clear ||
-      weather === WeatherType.Cloudy
-    );
+      weather === WeatherType.Clear
+    ));
 
     if (silent) {
       // Stop ambient if playing
