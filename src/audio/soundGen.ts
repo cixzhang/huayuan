@@ -1,4 +1,6 @@
 // Procedural WAV generation engine — pure math, zero dependencies
+import { SOUND_PARAMS, type SoundName } from './soundParams.js';
+
 const SAMPLE_RATE = 44100;
 
 // ── Primitives ──────────────────────────────────────────────────────
@@ -122,152 +124,151 @@ export function encodeWav(samples: Float64Array): Buffer {
   return buf;
 }
 
-// ── Ambient generators (8-10s, built-in 1s fade in/out) ─────────────
+// ── Ambient generators (8-10s, built-in fade in/out) ─────────────
 
-export function generateAmbientDayClear(): Buffer {
-  const dur = 9;
-  const s1 = sine(220, dur, 0.3);
-  const s2 = sine(330, dur, 0.2);
+export function generateAmbientDayClear(p: Record<string, number> = SOUND_PARAMS.day_clear): Buffer {
+  const dur = p.duration;
+  const s1 = sine(p.tone1Freq, dur, p.tone1Amp);
+  const s2 = sine(p.tone2Freq, dur, p.tone2Amp);
   // Slow amp modulation
   const combined = new Float64Array(s1.length);
   for (let i = 0; i < s1.length; i++) {
     const t = i / SAMPLE_RATE;
-    const mod = 0.7 + 0.3 * Math.sin(2 * Math.PI * 0.25 * t);
+    const mod = p.lfoMin + p.lfoMax * Math.sin(2 * Math.PI * p.lfoFreq * t);
     combined[i] = (s1[i] + s2[i]) * mod;
   }
-  return encodeWav(fade(combined, 1, 1));
+  return encodeWav(fade(combined, p.fadeIn, p.fadeOut));
 }
 
-export function generateAmbientDayRain(): Buffer {
-  const dur = 10;
-  const n = noise(dur, 0.25);
+export function generateAmbientDayRain(p: Record<string, number> = SOUND_PARAMS.day_rain): Buffer {
+  const dur = p.duration;
+  const n = noise(dur, p.noiseAmp);
   // Simple low-pass by averaging adjacent samples
   const filtered = new Float64Array(n.length);
   for (let i = 1; i < n.length; i++) {
-    filtered[i] = n[i] * 0.3 + filtered[i - 1] * 0.7;
+    filtered[i] = n[i] * p.lpNew + filtered[i - 1] * p.lpPrev;
   }
   // Random drip pings
   const pings = new Float64Array(n.length);
-  for (let p = 0; p < 20; p++) {
+  for (let pi = 0; pi < p.pingCount; pi++) {
     const start = Math.floor(Math.random() * (n.length - 2000));
-    const freq = 800 + Math.random() * 1200;
+    const freq = p.pingFreqMin + Math.random() * p.pingFreqMax;
     for (let i = 0; i < 2000; i++) {
-      const env = Math.exp(-i / 400);
-      pings[start + i] += 0.15 * env * Math.sin(2 * Math.PI * freq * i / SAMPLE_RATE);
+      const env = Math.exp(-i / p.pingDecay);
+      pings[start + i] += p.pingAmp * env * Math.sin(2 * Math.PI * freq * i / SAMPLE_RATE);
     }
   }
-  return encodeWav(fade(mix(filtered, pings), 1, 1));
+  return encodeWav(fade(mix(filtered, pings), p.fadeIn, p.fadeOut));
 }
 
-export function generateAmbientDayWind(): Buffer {
-  const dur = 9;
-  const n = noise(dur, 0.3);
+export function generateAmbientDayWind(p: Record<string, number> = SOUND_PARAMS.day_wind): Buffer {
+  const dur = p.duration;
+  const n = noise(dur, p.noiseAmp);
   const out = new Float64Array(n.length);
   for (let i = 0; i < n.length; i++) {
     const t = i / SAMPLE_RATE;
-    const lfo = 0.4 + 0.6 * Math.sin(2 * Math.PI * 2.5 * t);
+    const lfo = p.lfoMin + p.lfoMax * Math.sin(2 * Math.PI * p.lfoFreq * t);
     out[i] = n[i] * lfo;
   }
   // Low-pass
   for (let i = 1; i < out.length; i++) {
-    out[i] = out[i] * 0.2 + out[i - 1] * 0.8;
+    out[i] = out[i] * p.lpNew + out[i - 1] * p.lpPrev;
   }
-  return encodeWav(fade(out, 1, 1));
+  return encodeWav(fade(out, p.fadeIn, p.fadeOut));
 }
 
-export function generateAmbientDayCloudy(): Buffer {
-  const dur = 9;
-  const s1 = sine(220, dur, 0.15);
-  const s2 = sine(330, dur, 0.1);
+export function generateAmbientDayCloudy(p: Record<string, number> = SOUND_PARAMS.day_cloudy): Buffer {
+  const dur = p.duration;
+  const s1 = sine(p.tone1Freq, dur, p.tone1Amp);
+  const s2 = sine(p.tone2Freq, dur, p.tone2Amp);
   const combined = new Float64Array(s1.length);
   for (let i = 0; i < s1.length; i++) {
     const t = i / SAMPLE_RATE;
-    const mod = 0.6 + 0.4 * Math.sin(2 * Math.PI * 0.15 * t);
+    const mod = p.lfoMin + p.lfoMax * Math.sin(2 * Math.PI * p.lfoFreq * t);
     combined[i] = (s1[i] + s2[i]) * mod;
   }
-  return encodeWav(fade(combined, 1, 1));
+  return encodeWav(fade(combined, p.fadeIn, p.fadeOut));
 }
 
-export function generateAmbientNightClear(): Buffer {
-  const dur = 10;
+export function generateAmbientNightClear(p: Record<string, number> = SOUND_PARAMS.night_clear): Buffer {
+  const dur = p.duration;
   const out = new Float64Array(Math.floor(SAMPLE_RATE * dur));
-  // Cricket chorus: short bursts at 4-5kHz every 500-800ms
-  const burstInterval = Math.floor(SAMPLE_RATE * 0.6);
-  for (let pos = 0; pos < out.length; pos += burstInterval + Math.floor(Math.random() * SAMPLE_RATE * 0.3)) {
-    const freq = 4000 + Math.random() * 1000;
-    const burstLen = Math.floor(SAMPLE_RATE * (0.05 + Math.random() * 0.05));
+  // Cricket chorus: short bursts
+  const burstInterval = Math.floor(SAMPLE_RATE * p.burstInterval);
+  for (let pos = 0; pos < out.length; pos += burstInterval + Math.floor(Math.random() * SAMPLE_RATE * p.burstIntervalRand)) {
+    const freq = p.freqMin + Math.random() * p.freqMax;
+    const burstLen = Math.floor(SAMPLE_RATE * (p.burstDurMin + Math.random() * p.burstDurMax));
     for (let i = 0; i < burstLen && pos + i < out.length; i++) {
       const env = Math.sin(Math.PI * i / burstLen);
-      out[pos + i] += 0.2 * env * Math.sin(2 * Math.PI * freq * i / SAMPLE_RATE);
+      out[pos + i] += p.amp * env * Math.sin(2 * Math.PI * freq * i / SAMPLE_RATE);
     }
   }
-  return encodeWav(fade(out, 1, 1));
+  return encodeWav(fade(out, p.fadeIn, p.fadeOut));
 }
 
-export function generateAmbientNightRain(): Buffer {
-  const dur = 10;
-  const rain = noise(dur, 0.2);
+export function generateAmbientNightRain(p: Record<string, number> = SOUND_PARAMS.night_rain): Buffer {
+  const dur = p.duration;
+  const rain = noise(dur, p.noiseAmp);
   // Low-pass
   for (let i = 1; i < rain.length; i++) {
-    rain[i] = rain[i] * 0.3 + rain[i - 1] * 0.7;
+    rain[i] = rain[i] * p.lpNew + rain[i - 1] * p.lpPrev;
   }
   // Quieter crickets
   const crickets = new Float64Array(rain.length);
-  const burstInterval = Math.floor(SAMPLE_RATE * 0.8);
-  for (let pos = 0; pos < crickets.length; pos += burstInterval + Math.floor(Math.random() * SAMPLE_RATE * 0.4)) {
-    const freq = 4200 + Math.random() * 800;
-    const burstLen = Math.floor(SAMPLE_RATE * 0.04);
+  const burstInterval = Math.floor(SAMPLE_RATE * p.cricketInterval);
+  for (let pos = 0; pos < crickets.length; pos += burstInterval + Math.floor(Math.random() * SAMPLE_RATE * p.cricketIntervalRand)) {
+    const freq = p.cricketFreqMin + Math.random() * p.cricketFreqMax;
+    const burstLen = Math.floor(SAMPLE_RATE * p.cricketBurstDur);
     for (let i = 0; i < burstLen && pos + i < crickets.length; i++) {
       const env = Math.sin(Math.PI * i / burstLen);
-      crickets[pos + i] += 0.08 * env * Math.sin(2 * Math.PI * freq * i / SAMPLE_RATE);
+      crickets[pos + i] += p.cricketAmp * env * Math.sin(2 * Math.PI * freq * i / SAMPLE_RATE);
     }
   }
-  return encodeWav(fade(mix(rain, crickets), 1, 1));
+  return encodeWav(fade(mix(rain, crickets), p.fadeIn, p.fadeOut));
 }
 
-export function generateAmbientNightWind(): Buffer {
-  const dur = 9;
-  const n = noise(dur, 0.25);
+export function generateAmbientNightWind(p: Record<string, number> = SOUND_PARAMS.night_wind): Buffer {
+  const dur = p.duration;
+  const n = noise(dur, p.noiseAmp);
   const out = new Float64Array(n.length);
   for (let i = 0; i < n.length; i++) {
     const t = i / SAMPLE_RATE;
-    const lfo = 0.3 + 0.7 * Math.sin(2 * Math.PI * 1.5 * t);
+    const lfo = p.lfoMin + p.lfoMax * Math.sin(2 * Math.PI * p.lfoFreq * t);
     out[i] = n[i] * lfo;
   }
   // Heavier low-pass for lower pitch
   for (let i = 1; i < out.length; i++) {
-    out[i] = out[i] * 0.15 + out[i - 1] * 0.85;
+    out[i] = out[i] * p.lpNew + out[i - 1] * p.lpPrev;
   }
   // Distant cricket
   const crickets = new Float64Array(out.length);
-  const burstInterval = Math.floor(SAMPLE_RATE * 1.2);
-  for (let pos = 0; pos < crickets.length; pos += burstInterval + Math.floor(Math.random() * SAMPLE_RATE * 0.5)) {
-    const freq = 4500 + Math.random() * 500;
-    const burstLen = Math.floor(SAMPLE_RATE * 0.03);
+  const burstInterval = Math.floor(SAMPLE_RATE * p.cricketInterval);
+  for (let pos = 0; pos < crickets.length; pos += burstInterval + Math.floor(Math.random() * SAMPLE_RATE * p.cricketIntervalRand)) {
+    const freq = p.cricketFreqMin + Math.random() * p.cricketFreqMax;
+    const burstLen = Math.floor(SAMPLE_RATE * p.cricketBurstDur);
     for (let i = 0; i < burstLen && pos + i < crickets.length; i++) {
       const env = Math.sin(Math.PI * i / burstLen);
-      crickets[pos + i] += 0.05 * env * Math.sin(2 * Math.PI * freq * i / SAMPLE_RATE);
+      crickets[pos + i] += p.cricketAmp * env * Math.sin(2 * Math.PI * freq * i / SAMPLE_RATE);
     }
   }
-  return encodeWav(fade(mix(out, crickets), 1, 1));
+  return encodeWav(fade(mix(out, crickets), p.fadeIn, p.fadeOut));
 }
 
-export function generateAmbientNightCloudy(): Buffer {
-  const dur = 8;
-  // Near-silence with faint 110Hz drone
-  const drone = sine(110, dur, 0.06);
-  const faintNoise = noise(dur, 0.02);
-  return encodeWav(fade(mix(drone, faintNoise), 1, 1));
+export function generateAmbientNightCloudy(p: Record<string, number> = SOUND_PARAMS.night_cloudy): Buffer {
+  const dur = p.duration;
+  // Near-silence with faint drone
+  const drone = sine(p.droneFreq, dur, p.droneAmp);
+  const faintNoise = noise(dur, p.noiseAmp);
+  return encodeWav(fade(mix(drone, faintNoise), p.fadeIn, p.fadeOut));
 }
 
 // ── Bird chirps (100-300ms) ─────────────────────────────────────────
 
-export function generateRobinChirp(): Buffer {
-  // 3-note descending trill: 2200→1800→2400Hz
-  const noteLen = 0.07;
-  const n1 = envelope(sine(2200, noteLen, 0.6), 0.005, 0.01, 0.8, 0.01);
-  const n2 = envelope(sine(1800, noteLen, 0.5), 0.005, 0.01, 0.7, 0.01);
-  const n3 = envelope(sine(2400, noteLen, 0.6), 0.005, 0.01, 0.8, 0.01);
+export function generateRobinChirp(p: Record<string, number> = SOUND_PARAMS.robin): Buffer {
+  // 3-note descending trill
+  const n1 = envelope(sine(p.note1Freq, p.note1Dur, p.note1Amp), p.note1A, p.note1D, p.note1S, p.note1R);
+  const n2 = envelope(sine(p.note2Freq, p.note2Dur, p.note2Amp), p.note2A, p.note2D, p.note2S, p.note2R);
+  const n3 = envelope(sine(p.note3Freq, p.note3Dur, p.note3Amp), p.note3A, p.note3D, p.note3S, p.note3R);
   const total = n1.length + n2.length + n3.length;
   const out = new Float64Array(total);
   out.set(n1, 0);
@@ -276,12 +277,11 @@ export function generateRobinChirp(): Buffer {
   return encodeWav(out);
 }
 
-export function generateSparrowChirp(): Buffer {
-  // Two quick chips: 3000, 3200Hz
-  const noteLen = 0.05;
-  const gap = Math.floor(SAMPLE_RATE * 0.03);
-  const n1 = envelope(sine(3000, noteLen, 0.5), 0.003, 0.01, 0.7, 0.01);
-  const n2 = envelope(sine(3200, noteLen, 0.5), 0.003, 0.01, 0.7, 0.01);
+export function generateSparrowChirp(p: Record<string, number> = SOUND_PARAMS.sparrow): Buffer {
+  // Two quick chips
+  const gap = Math.floor(SAMPLE_RATE * p.gap);
+  const n1 = envelope(sine(p.note1Freq, p.note1Dur, p.note1Amp), p.note1A, p.note1D, p.note1S, p.note1R);
+  const n2 = envelope(sine(p.note2Freq, p.note2Dur, p.note2Amp), p.note2A, p.note2D, p.note2S, p.note2R);
   const total = n1.length + gap + n2.length;
   const out = new Float64Array(total);
   out.set(n1, 0);
@@ -289,64 +289,88 @@ export function generateSparrowChirp(): Buffer {
   return encodeWav(out);
 }
 
-export function generateDuckQuack(): Buffer {
-  // Low FM noise burst 300-500Hz
-  const dur = 0.2;
-  const fm = fmSine(400, 30, 100, dur, 0.5);
-  const n = noise(dur, 0.15);
+export function generateDuckQuack(p: Record<string, number> = SOUND_PARAMS.duck): Buffer {
+  // Low FM noise burst
+  const dur = p.duration;
+  const fm = fmSine(p.carrierFreq, p.modFreq, p.modDepth, dur, p.fmAmp);
+  const n = noise(dur, p.noiseAmp);
   const combined = mix(fm, n);
-  return encodeWav(envelope(combined, 0.01, 0.03, 0.6, 0.05));
+  return encodeWav(envelope(combined, p.attack, p.decay, p.sustain, p.release));
 }
 
-export function generateGooseHonk(): Buffer {
+export function generateGooseHonk(p: Record<string, number> = SOUND_PARAMS.goose): Buffer {
   // Nasal brassy honk: two FM oscillators with wide modulation + noise attack
-  const dur = 0.35;
+  const dur = p.duration;
   const len = Math.floor(44100 * dur);
   // Primary: FM with wide modulation depth for nasal quality
-  const fm1 = fmSine(280, 12, 150, dur, 0.5);
+  const fm1 = fmSine(p.fm1Carrier, p.fm1ModFreq, p.fm1ModDepth, dur, p.fm1Amp);
   // Secondary harmonic at ~3:2 ratio for beating/formant effect
-  const fm2 = fmSine(420, 8, 80, dur, 0.3);
+  const fm2 = fmSine(p.fm2Carrier, p.fm2ModFreq, p.fm2ModDepth, dur, p.fm2Amp);
   // Brief noise burst for breathy attack
   const noiseBurst = new Float64Array(len);
-  const attackSamples = Math.floor(44100 * 0.04);
+  const attackSamples = Math.floor(44100 * p.noiseAttackDur);
   for (let i = 0; i < attackSamples && i < len; i++) {
-    noiseBurst[i] = 0.25 * (Math.random() * 2 - 1) * (1 - i / attackSamples);
+    noiseBurst[i] = p.noiseAmp * (Math.random() * 2 - 1) * (1 - i / attackSamples);
   }
   const combined = mix(fm1, fm2, noiseBurst);
-  return encodeWav(envelope(combined, 0.008, 0.05, 0.65, 0.08));
+  return encodeWav(envelope(combined, p.attack, p.decay, p.sustain, p.release));
 }
 
 // ── Action SFX (100-200ms) ──────────────────────────────────────────
 
-export function generatePlantSfx(): Buffer {
-  // Sine sweep 800→200Hz
-  const dur = 0.15;
+export function generatePlantSfx(p: Record<string, number> = SOUND_PARAMS.plant_sfx): Buffer {
+  // Sine sweep freqStart→freqEnd
+  const dur = p.duration;
   const len = Math.floor(SAMPLE_RATE * dur);
   const out = new Float64Array(len);
   for (let i = 0; i < len; i++) {
     const t = i / len;
-    const freq = 800 - 600 * t;
-    out[i] = 0.4 * Math.sin(2 * Math.PI * freq * i / SAMPLE_RATE);
+    const freq = p.freqStart - (p.freqStart - p.freqEnd) * t;
+    out[i] = p.amp * Math.sin(2 * Math.PI * freq * i / SAMPLE_RATE);
   }
-  return encodeWav(envelope(out, 0.01, 0.02, 0.7, 0.03));
+  return encodeWav(envelope(out, p.attack, p.decay, p.sustain, p.release));
 }
 
-export function generateWaterSfx(): Buffer {
-  // Noise burst + 600Hz sine
-  const dur = 0.15;
-  const n = noise(dur, 0.2);
+export function generateWaterSfx(p: Record<string, number> = SOUND_PARAMS.water_sfx): Buffer {
+  // Noise burst + sine
+  const dur = p.duration;
+  const n = noise(dur, p.noiseAmp);
   // Low-pass the noise
   for (let i = 1; i < n.length; i++) {
-    n[i] = n[i] * 0.4 + n[i - 1] * 0.6;
+    n[i] = n[i] * p.lpNew + n[i - 1] * p.lpPrev;
   }
-  const s = sine(600, dur, 0.3);
-  return encodeWav(envelope(mix(n, s), 0.005, 0.02, 0.6, 0.04));
+  const s = sine(p.sineFreq, dur, p.sineAmp);
+  return encodeWav(envelope(mix(n, s), p.attack, p.decay, p.sustain, p.release));
 }
 
-export function generateHarvestSfx(): Buffer {
-  // Ding at 1200Hz + harmonic
-  const dur = 0.18;
-  const s1 = sine(1200, dur, 0.4);
-  const s2 = sine(2400, dur, 0.15);
-  return encodeWav(envelope(mix(s1, s2), 0.005, 0.03, 0.5, 0.06));
+export function generateHarvestSfx(p: Record<string, number> = SOUND_PARAMS.harvest_sfx): Buffer {
+  // Ding at tone1Freq + harmonic
+  const dur = p.duration;
+  const s1 = sine(p.tone1Freq, dur, p.tone1Amp);
+  const s2 = sine(p.tone2Freq, dur, p.tone2Amp);
+  return encodeWav(envelope(mix(s1, s2), p.attack, p.decay, p.sustain, p.release));
+}
+
+// ── Dispatch ────────────────────────────────────────────────────────
+
+const GENERATORS: Record<SoundName, (p?: Record<string, number>) => Buffer> = {
+  day_clear: generateAmbientDayClear,
+  day_rain: generateAmbientDayRain,
+  day_wind: generateAmbientDayWind,
+  day_cloudy: generateAmbientDayCloudy,
+  night_clear: generateAmbientNightClear,
+  night_rain: generateAmbientNightRain,
+  night_wind: generateAmbientNightWind,
+  night_cloudy: generateAmbientNightCloudy,
+  robin: generateRobinChirp,
+  sparrow: generateSparrowChirp,
+  duck: generateDuckQuack,
+  goose: generateGooseHonk,
+  plant_sfx: generatePlantSfx,
+  water_sfx: generateWaterSfx,
+  harvest_sfx: generateHarvestSfx,
+};
+
+export function generateSound(name: SoundName, params?: Record<string, number>): Buffer {
+  return GENERATORS[name](params);
 }

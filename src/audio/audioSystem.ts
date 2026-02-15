@@ -17,7 +17,7 @@ import {
 type AmbientKey = 'day_clear' | 'day_rain' | 'day_wind' | 'day_cloudy'
                 | 'night_clear' | 'night_rain' | 'night_wind' | 'night_cloudy';
 
-const AMBIENT_GENERATORS: Record<AmbientKey, () => Buffer> = {
+const AMBIENT_GENERATORS: Record<AmbientKey, (p?: Record<string, number>) => Buffer> = {
   day_clear: generateAmbientDayClear,
   day_rain: generateAmbientDayRain,
   day_wind: generateAmbientDayWind,
@@ -28,14 +28,14 @@ const AMBIENT_GENERATORS: Record<AmbientKey, () => Buffer> = {
   night_cloudy: generateAmbientNightCloudy,
 };
 
-const CHIRP_GENERATORS: Record<number, () => Buffer> = {
+const CHIRP_GENERATORS: Record<number, (p?: Record<string, number>) => Buffer> = {
   [BirdType.Robin]: generateRobinChirp,
   [BirdType.Sparrow]: generateSparrowChirp,
   [BirdType.Duck]: generateDuckQuack,
   [BirdType.Goose]: generateGooseHonk,
 };
 
-const SFX_GENERATORS: Record<string, () => Buffer> = {
+const SFX_GENERATORS: Record<string, (p?: Record<string, number>) => Buffer> = {
   plant: generatePlantSfx,
   water: generateWaterSfx,
   harvest: generateHarvestSfx,
