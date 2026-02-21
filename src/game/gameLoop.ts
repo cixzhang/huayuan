@@ -474,6 +474,7 @@ export class GameLoop {
         terraform(s, payload.arg || undefined);
         s.message = `Terraformed → ${s.grid[s.cursor.row][s.cursor.col].terrain}`;
         s.messageExpiry = s.tickCount + MESSAGE_DURATION_TICKS;
+        s.selection = null;
         break;
 
       case 'expand': {

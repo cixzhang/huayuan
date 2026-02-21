@@ -152,8 +152,10 @@ function buildScreen(
     // Settings submenu
     const soundLabel = settings.soundEnabled ? 'ON' : 'OFF';
     const weatherLabel = settings.weatherEffectsEnabled ? 'ON' : 'OFF';
+    const pinyinLabel = settings.showPinyin ? 'ON' : 'OFF';
     lines.push(boxLine(centerInBox(`${GOLD}[s]${reset}${BG} Sound: ${soundLabel}`, innerW), innerW));
     lines.push(boxLine(centerInBox(`${GOLD}[w]${reset}${BG} Weather FX: ${weatherLabel}`, innerW), innerW));
+    lines.push(boxLine(centerInBox(`${GOLD}[p]${reset}${BG} Pinyin: ${pinyinLabel}`, innerW), innerW));
     lines.push(emptyLine(innerW));
 
     // Dialog options
@@ -169,8 +171,13 @@ function buildScreen(
     }
     lines.push(emptyLine(innerW));
 
-    lines.push(boxLine(centerInBox(`${GOLD}[1]${reset}${BG} Generate new dialog`, innerW), innerW));
-    lines.push(boxLine(centerInBox(`${GOLD}[2]${reset}${BG} Replace dialog`, innerW), innerW));
+    if (hasKey) {
+      lines.push(boxLine(centerInBox(`${GOLD}[1]${reset}${BG} Generate new dialog`, innerW), innerW));
+      lines.push(boxLine(centerInBox(`${GOLD}[2]${reset}${BG} Replace dialog`, innerW), innerW));
+    } else {
+      lines.push(boxLine(centerInBox(`${DIM}[1] Generate new dialog${reset}${BG}`, innerW), innerW));
+      lines.push(boxLine(centerInBox(`${DIM}[2] Replace dialog${reset}${BG}`, innerW), innerW));
+    }
     lines.push(boxLine(centerInBox(`${GOLD}[3]${reset}${BG} Restore default`, innerW), innerW));
     if (saveInfo) {
       lines.push(boxLine(centerInBox(`${GOLD}[4]${reset}${BG} Delete save`, innerW), innerW));
@@ -334,14 +341,19 @@ export function showTitleScreen(
           saveSettings(settings);
           redraw();
         }
-        else if (key.sequence === '1') {
+        else if (key.sequence === 'p') {
+          settings.showPinyin = !settings.showPinyin;
+          saveSettings(settings);
+          redraw();
+        }
+        else if (key.sequence === '1' && !!process.env['ANTHROPIC_API_KEY']) {
           dialogForm.mode = 'add';
           dialogForm.status = '';
           dialogForm.field = 'hsk';
           menu = 'dialog_form';
           redraw();
         }
-        else if (key.sequence === '2') {
+        else if (key.sequence === '2' && !!process.env['ANTHROPIC_API_KEY']) {
           dialogForm.mode = 'replace';
           dialogForm.status = '';
           dialogForm.field = 'hsk';

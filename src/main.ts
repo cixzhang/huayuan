@@ -80,6 +80,9 @@ async function main(): Promise<void> {
     break;
   }
 
+  // Apply pinyin setting
+  state.showPinyin = settings.showPinyin;
+
   // Prepare screen for game
   if (saved) {
     state.message = 'Game loaded';

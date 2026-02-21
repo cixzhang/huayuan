@@ -489,5 +489,6 @@ export function createGameState(mapType: MapType = 'river'): GameState {
     dialogLog: [],
     logScroll: 0,
     helpScroll: 0,
+    showPinyin: true,
   };
 }

@@ -141,19 +141,7 @@ export function findChar(state: GameState, char: string): boolean {
 
 const TERRAIN_CYCLE: Terrain[] = ['soil', 'sand', 'river'];
 
-export function terraform(state: GameState, targetTerrain?: string): void {
-  const cell = state.grid[state.cursor.row]?.[state.cursor.col];
-  if (!cell) return;
-
-  let newTerrain: Terrain;
-  if (targetTerrain && (targetTerrain === 'soil' || targetTerrain === 'sand' || targetTerrain === 'river')) {
-    newTerrain = targetTerrain;
-  } else {
-    // Cycle: soil → sand → river → soil
-    const idx = TERRAIN_CYCLE.indexOf(cell.terrain);
-    newTerrain = TERRAIN_CYCLE[(idx + 1) % TERRAIN_CYCLE.length];
-  }
-
+function terraformCell(cell: { terrain: Terrain; waterLevel: number; plant: Plant | null; wildChar: string | null }, newTerrain: Terrain): void {
   cell.terrain = newTerrain;
   if (newTerrain === 'river') {
     cell.waterLevel = 100;
@@ -165,5 +153,35 @@ export function terraform(state: GameState, targetTerrain?: string): void {
     cell.wildChar = null;
   } else {
     cell.waterLevel = 0;
+  }
+}
+
+export function terraform(state: GameState, targetTerrain?: string): void {
+  let newTerrain: Terrain;
+  if (targetTerrain && (targetTerrain === 'soil' || targetTerrain === 'sand' || targetTerrain === 'river')) {
+    newTerrain = targetTerrain;
+  } else {
+    const cell = state.grid[state.cursor.row]?.[state.cursor.col];
+    if (!cell) return;
+    const idx = TERRAIN_CYCLE.indexOf(cell.terrain);
+    newTerrain = TERRAIN_CYCLE[(idx + 1) % TERRAIN_CYCLE.length];
+  }
+
+  if (state.selection) {
+    const sel = state.selection;
+    const minR = Math.min(sel.anchor.row, sel.cursor.row);
+    const maxR = Math.max(sel.anchor.row, sel.cursor.row);
+    const minC = Math.min(sel.anchor.col, sel.cursor.col);
+    const maxC = Math.max(sel.anchor.col, sel.cursor.col);
+    for (let r = minR; r <= maxR; r++) {
+      for (let c = minC; c <= maxC; c++) {
+        const cell = state.grid[r]?.[c];
+        if (cell) terraformCell(cell, newTerrain);
+      }
+    }
+  } else {
+    const cell = state.grid[state.cursor.row]?.[state.cursor.col];
+    if (!cell) return;
+    terraformCell(cell, newTerrain);
   }
 }

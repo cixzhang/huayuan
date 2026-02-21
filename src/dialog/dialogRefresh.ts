@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import { GENERATED_DIALOG_PATH } from '../constants.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,7 +12,7 @@ const MODEL_IDS: Record<string, string> = {
   opus: 'claude-opus-4-6',
 };
 
-const GENERATED_PATH = path.resolve(__dirname, '../data/dialog-generated.json');
+const GENERATED_PATH = GENERATED_DIALOG_PATH;
 
 function buildSystemPrompt(hskLevel: number, topics: string): string {
   // Read dialog guidelines

@@ -107,6 +107,9 @@ export function resolveKey(key: KeyPress, mode: InputMode): GameActionType | nul
   }
 
   if (mode === InputMode.Visual) {
+    if (key.sequence === ':') {
+      return GameActionType.EnterCommand;
+    }
     return visualMap[key.name] || visualMap[key.sequence] || null;
   }
 

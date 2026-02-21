@@ -234,6 +234,7 @@ export interface DialogLogEntry {
 export interface GameSettings {
   soundEnabled: boolean;
   weatherEffectsEnabled: boolean;
+  showPinyin: boolean;
 }
 
 // === Game State ===
@@ -260,4 +261,5 @@ export interface GameState {
   dialogLog: DialogLogEntry[];
   logScroll: number;
   helpScroll: number;
+  showPinyin: boolean;
 }

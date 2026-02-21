@@ -6,6 +6,11 @@
   "bin": {
     "huayuan": "./bin/huayuan.js"
   },
+  "files": [
+    "bin/",
+    "src/",
+    "docs/"
+  ],
   "scripts": {
     "start": "npx tsx src/main.ts",
     "dev": "npx tsx --watch src/main.ts",

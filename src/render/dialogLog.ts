@@ -46,7 +46,9 @@ export function renderDialogLog(state: GameState, cols: number, gridRows: number
       for (const line of entry.lines) {
         const wrapped = line.text.slice(0, innerWidth - 4);
         contentLines.push({ text: `  ${wrapped}` });
-        contentLines.push({ text: `  ${line.pinyin.slice(0, innerWidth - 4)}`, color: fg(245) });
+        if (state.showPinyin) {
+          contentLines.push({ text: `  ${line.pinyin.slice(0, innerWidth - 4)}`, color: fg(245) });
+        }
       }
 
       // Question

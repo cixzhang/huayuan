@@ -134,7 +134,7 @@ export function renderDialogOverlay(state: GameState, cols: number, gridRows: nu
       // Build option text: show Chinese (pinyin) if present, otherwise just English
       let optText: string;
       if (opt.text) {
-        optText = `${opt.text} (${opt.pinyin})`;
+        optText = state.showPinyin ? `${opt.text} (${opt.pinyin})` : opt.text;
       } else if (opt.english) {
         optText = opt.english;
       } else {

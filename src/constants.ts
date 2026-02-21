@@ -77,5 +77,8 @@ export const SAVE_FILE_PATH = `${process.env.HOME || '~'}/.huayuan-save.json`;
 // Settings
 export const SETTINGS_FILE_PATH = `${process.env.HOME || '~'}/.huayuan-settings.json`;
 
+// Generated dialog
+export const GENERATED_DIALOG_PATH = `${process.env.HOME || '~'}/.huayuan-dialog.json`;
+
 // Dialog Log
 export const MAX_DIALOG_LOG = 50;

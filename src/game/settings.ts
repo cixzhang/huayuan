@@ -5,6 +5,7 @@ import { SETTINGS_FILE_PATH } from '../constants.js';
 const DEFAULTS: GameSettings = {
   soundEnabled: true,
   weatherEffectsEnabled: true,
+  showPinyin: true,
 };
 
 export function loadSettings(): GameSettings {
@@ -14,6 +15,7 @@ export function loadSettings(): GameSettings {
     return {
       soundEnabled: typeof parsed.soundEnabled === 'boolean' ? parsed.soundEnabled : DEFAULTS.soundEnabled,
       weatherEffectsEnabled: typeof parsed.weatherEffectsEnabled === 'boolean' ? parsed.weatherEffectsEnabled : DEFAULTS.weatherEffectsEnabled,
+      showPinyin: typeof parsed.showPinyin === 'boolean' ? parsed.showPinyin : DEFAULTS.showPinyin,
     };
   } catch {
     return { ...DEFAULTS };

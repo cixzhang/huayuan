@@ -1,19 +1,14 @@
 import * as fs from 'fs';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
 import { BirdType } from '../types.js';
 import type { DialogTree, GameState, SeedRewardType } from '../types.js';
 import { HYBRID_SPECIES } from './hybrids.js';
 import { DIALOG_POOL } from './dialog.js';
+import { GENERATED_DIALOG_PATH } from '../constants.js';
 
 // Merge static dialogs with any generated ones
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 const ALL_DIALOGS: DialogTree[] = [...DIALOG_POOL];
 try {
-  const genPath = path.resolve(__dirname, './dialog-generated.json');
-  const raw = fs.readFileSync(genPath, 'utf-8');
+  const raw = fs.readFileSync(GENERATED_DIALOG_PATH, 'utf-8');
   const parsed = JSON.parse(raw);
   if (parsed.dialogs && Array.isArray(parsed.dialogs)) {
     ALL_DIALOGS.push(...(parsed.dialogs as DialogTree[]));
