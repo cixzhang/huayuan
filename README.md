@@ -30,11 +30,11 @@ for you.
 
 ## Screenshots
 
-![Title screen](screenshots/title.png)
+![Title screen](https://raw.githubusercontent.com/cixzhang/huayuan/main/screenshots/title.png)
 
-![A mature garden](screenshots/garden.png)
+![A mature garden](https://raw.githubusercontent.com/cixzhang/huayuan/main/screenshots/garden.png)
 
-![Lake map](screenshots/lake.png)
+![Lake map](https://raw.githubusercontent.com/cixzhang/huayuan/main/screenshots/lake.png)
 
 ## Install
 
@@ -52,7 +52,7 @@ npx huayuan
 Or clone and run from source:
 
 ```bash
-git clone https://github.com/cindyzhang/huayuan.git
+git clone https://github.com/cixzhang/huayuan.git
 cd huayuan
 npm install
 npm start
