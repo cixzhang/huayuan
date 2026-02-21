@@ -39,6 +39,8 @@ function visWidth(s: string): number {
   let w = 0;
   for (const ch of stripped) {
     const code = ch.codePointAt(0) ?? 0;
+    // Skip zero-width combining characters (U+0300-U+036F)
+    if (code >= 0x0300 && code <= 0x036F) continue;
     w += (code > 0x2E7F) ? 2 : 1;
   }
   return w;
