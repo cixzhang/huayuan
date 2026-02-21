@@ -1,6 +1,6 @@
 {
   "name": "huayuan",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A terminal garden game for learning Chinese and Vim",
   "type": "module",
   "bin": {
