@@ -1,7 +1,7 @@
 {
   "name": "huayuan",
   "version": "1.0.0",
-  "description": "A CLI garden game that teaches vim commands and Chinese vocabulary",
+  "description": "A terminal garden game for learning Chinese and Vim",
   "type": "module",
   "bin": {
     "huayuan": "./bin/huayuan.js"
@@ -23,6 +23,15 @@
     "@types/node": "^25.2.1",
     "typescript": "^5.4.0"
   },
+  "keywords": [
+    "chinese",
+    "vim",
+    "garden",
+    "terminal",
+    "cli",
+    "game",
+    "language-learning"
+  ],
   "author": "Cindy Zhang",
   "license": "ISC"
 }
