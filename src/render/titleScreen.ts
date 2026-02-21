@@ -10,7 +10,7 @@ import { saveSettings } from '../game/settings.js';
 import type { Cell, GameSettings } from '../types.js';
 import type { AudioSystem } from '../audio/audioSystem.js';
 
-export type TitleChoice = 'start' | 'delete_save' | 'quit';
+export type TitleChoice = 'start:beach' | 'start:lake' | 'start:river' | 'delete_save' | 'quit';
 
 export interface SaveInfo {
   grid?: Cell[][];
@@ -88,7 +88,7 @@ interface DialogFormState {
   statusColor: string;
 }
 
-type Menu = 'main' | 'settings' | 'dialog_form';
+type Menu = 'main' | 'map_select' | 'settings' | 'dialog_form';
 
 function buildScreen(
   menu: Menu,
@@ -139,6 +139,15 @@ function buildScreen(
     lines.push(boxLine(centerInBox(`${GOLD}[1]${reset}${BG} Start game`, innerW), innerW));
     lines.push(boxLine(centerInBox(`${GOLD}[2]${reset}${BG} Settings`, innerW), innerW));
     lines.push(boxLine(centerInBox(`${GOLD}[3]${reset}${BG} Quit`, innerW), innerW));
+  } else if (menu === 'map_select') {
+    // Map selection submenu
+    lines.push(boxLine(centerInBox('Choose your garden:', innerW), innerW));
+    lines.push(emptyLine(innerW));
+    lines.push(boxLine(centerInBox(`${GOLD}[1]${reset}${BG} Beach  ${DIM}~ocean shore~${reset}${BG}`, innerW), innerW));
+    lines.push(boxLine(centerInBox(`${GOLD}[2]${reset}${BG} Lake   ${DIM}~central lake~${reset}${BG}`, innerW), innerW));
+    lines.push(boxLine(centerInBox(`${GOLD}[3]${reset}${BG} River  ${DIM}~winding path~${reset}${BG}`, innerW), innerW));
+    lines.push(emptyLine(innerW));
+    lines.push(boxLine(centerInBox(`${DIM}[esc] back${reset}${BG}`, innerW), innerW));
   } else if (menu === 'settings') {
     // Settings submenu
     const soundLabel = settings.soundEnabled ? 'ON' : 'OFF';
@@ -292,12 +301,27 @@ export function showTitleScreen(
       }
 
       if (menu === 'main') {
-        if (key.sequence === '1') { cleanup(); resolve('start'); }
+        if (key.sequence === '1') {
+          if (saveInfo) {
+            cleanup(); resolve('start:river');
+          } else {
+            menu = 'map_select';
+            redraw();
+          }
+        }
         else if (key.sequence === '2') {
           menu = 'settings';
           redraw();
         }
         else if (key.sequence === '3') { cleanup(); resolve('quit'); }
+      } else if (menu === 'map_select') {
+        if (key.sequence === '1') { cleanup(); resolve('start:beach'); }
+        else if (key.sequence === '2') { cleanup(); resolve('start:lake'); }
+        else if (key.sequence === '3') { cleanup(); resolve('start:river'); }
+        else if (key.name === 'escape') {
+          menu = 'main';
+          redraw();
+        }
       } else if (menu === 'settings') {
         if (key.sequence === 's') {
           settings.soundEnabled = !settings.soundEnabled;

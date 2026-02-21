@@ -2,7 +2,7 @@ import { exitFullScreen, onResize, getTerminalSize } from './terminal/screen.js'
 import { clearScreen, hideCursor, moveTo } from './terminal/ansi.js';
 import { startInput, stopInput } from './terminal/input.js';
 import { InputManager } from './input/inputManager.js';
-import { createGameState } from './game/gameState.js';
+import { createGameState, type MapType } from './game/gameState.js';
 import { GameLoop } from './game/gameLoop.js';
 import { AudioSystem } from './audio/audioSystem.js';
 import { CELL_WIDTH, HUD_ROWS, MAP_ROWS, MAP_COLS, MESSAGE_DURATION_TICKS } from './constants.js';
@@ -21,6 +21,12 @@ function computeGrownSpeciesIds(grid: { plant: { speciesId: string } | null }[][
     }
   }
   return ids;
+}
+
+function parseMapType(choice: string): MapType {
+  if (choice === 'start:beach') return 'beach';
+  if (choice === 'start:lake') return 'lake';
+  return 'river';
 }
 
 async function main(): Promise<void> {
@@ -66,7 +72,11 @@ async function main(): Promise<void> {
       continue;
     }
 
-    // choice === 'start'
+    // choice starts with 'start:'
+    if (!saved) {
+      const mapType = parseMapType(choice);
+      state = createGameState(mapType);
+    }
     break;
   }
 

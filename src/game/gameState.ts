@@ -8,6 +8,8 @@ import { SEED_ORDER } from '../data/plants.js';
 import { getSpecies } from '../data/plants.js';
 import { createDefaultDialogState } from './birds.js';
 
+export type MapType = 'beach' | 'lake' | 'river';
+
 function generateRiver(grid: Cell[][], rows: number, cols: number): void {
   // River meanders diagonally from top-left area to bottom-right area
   // using a smooth S-curve
@@ -97,29 +99,10 @@ function generateLake(grid: Cell[][], rows: number, cols: number): void {
   }
 }
 
-function generateSand(grid: Cell[][], rows: number, cols: number): void {
-  // Beach strips: ~65% chance for soil cells adjacent to river
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (grid[r][c].terrain !== 'soil') continue;
-      let adjRiver = false;
-      for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]] as const) {
-        const nr = r + dr;
-        const nc = c + dc;
-        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && grid[nr][nc].terrain === 'river') {
-          adjRiver = true;
-          break;
-        }
-      }
-      if (adjRiver && Math.random() < 0.65) {
-        grid[r][c].terrain = 'sand';
-      }
-    }
-  }
-
-  // Desert patch: ellipse in the bottom-right area
+function generateRiverSand(grid: Cell[][], rows: number, cols: number): void {
+  // Sand ellipse in the bottom-left corner (away from river's top-left→bottom-right path)
   const centerRow = Math.floor(rows * 0.75);
-  const centerCol = Math.floor(cols * 0.8);
+  const centerCol = Math.floor(cols * 0.2);
   const radiusR = 4;
   const radiusC = 6;
 
@@ -130,6 +113,269 @@ function generateSand(grid: Cell[][], rows: number, cols: number): void {
       const dc = (c - centerCol) / radiusC;
       if (dr * dr + dc * dc <= 1.0) {
         grid[r][c].terrain = 'sand';
+      }
+    }
+  }
+}
+
+function generateOcean(grid: Cell[][], rows: number, cols: number): void {
+  // Fill right ~8 columns with river terrain (ocean)
+  const oceanStart = cols - 8;
+  for (let r = 0; r < rows; r++) {
+    for (let c = oceanStart; c < cols; c++) {
+      grid[r][c].terrain = 'river';
+      grid[r][c].waterLevel = 100;
+    }
+  }
+}
+
+function generateRiverDelta(grid: Cell[][], rows: number, cols: number): void {
+  // Main river enters from left around row 40-60%, flows right toward ocean
+  const oceanStart = cols - 8;
+  const startRow = Math.floor(rows * (0.4 + Math.random() * 0.2));
+  const seed = Math.floor(Math.random() * 1000);
+
+  let prevCenter = startRow;
+  for (let c = 0; c < oceanStart; c++) {
+    const t = c / oceanStart;
+    const wobble = Math.sin((c + seed) * 0.25) * 2;
+    let centerRow = Math.round(startRow + wobble);
+
+    // Clamp so center doesn't jump more than 1 from previous
+    centerRow = Math.max(prevCenter - 1, Math.min(prevCenter + 1, centerRow));
+    prevCenter = centerRow;
+
+    // River widens as it approaches ocean
+    const width = t > 0.7 ? 3 : t > 0.4 ? 2 : 1;
+    const halfWidth = Math.floor(width / 2);
+
+    for (let dr = -halfWidth; dr <= halfWidth; dr++) {
+      const r = centerRow + dr;
+      if (r >= 0 && r < rows && c >= 0 && c < cols) {
+        grid[r][c].terrain = 'river';
+        grid[r][c].waterLevel = 100;
+      }
+    }
+  }
+
+  // After 60% of the way, add 2 diverging branch channels
+  const branchStart = Math.floor(oceanStart * 0.6);
+  // Find main river center at branch start
+  let mainCenter = startRow;
+  for (let r = 0; r < rows; r++) {
+    if (grid[r][branchStart].terrain === 'river') {
+      mainCenter = r;
+      break;
+    }
+  }
+
+  // Upper branch drifts up
+  let upperRow = mainCenter - 1;
+  for (let c = branchStart; c < oceanStart; c++) {
+    const drift = Math.random() < 0.3 ? -1 : 0;
+    upperRow = Math.max(0, upperRow + drift);
+    if (upperRow >= 0 && upperRow < rows) {
+      grid[upperRow][c].terrain = 'river';
+      grid[upperRow][c].waterLevel = 100;
+    }
+  }
+
+  // Lower branch drifts down
+  let lowerRow = mainCenter + 1;
+  for (let c = branchStart; c < oceanStart; c++) {
+    const drift = Math.random() < 0.3 ? 1 : 0;
+    lowerRow = Math.min(rows - 1, lowerRow + drift);
+    if (lowerRow >= 0 && lowerRow < rows) {
+      grid[lowerRow][c].terrain = 'river';
+      grid[lowerRow][c].waterLevel = 100;
+    }
+  }
+}
+
+function generateBeachSand(grid: Cell[][], rows: number, cols: number): void {
+  const oceanStart = cols - 8;
+  // 4-6 column sandy strip left of ocean
+  const stripWidth = 4 + Math.floor(Math.random() * 3);
+  for (let r = 0; r < rows; r++) {
+    for (let c = oceanStart - stripWidth; c < oceanStart; c++) {
+      if (c >= 0 && c < cols && grid[r][c].terrain === 'soil') {
+        grid[r][c].terrain = 'sand';
+      }
+    }
+  }
+
+  // 50% chance sand adjacent to any river cell (non-ocean)
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < oceanStart - stripWidth; c++) {
+      if (grid[r][c].terrain !== 'soil') continue;
+      let adjRiver = false;
+      for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]] as const) {
+        const nr = r + dr;
+        const nc = c + dc;
+        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && grid[nr][nc].terrain === 'river') {
+          adjRiver = true;
+          break;
+        }
+      }
+      if (adjRiver && Math.random() < 0.5) {
+        grid[r][c].terrain = 'sand';
+      }
+    }
+  }
+}
+
+function generateCentralLake(grid: Cell[][], rows: number, cols: number): void {
+  // Two overlapping circles to form an oblong lake
+  const centerRow = Math.floor(rows / 2);
+  const centerCol = Math.floor(cols / 2);
+
+  // Left circle: offset left, right circle: offset right
+  const c1 = { r: centerRow, c: centerCol - 7 };
+  const c2 = { r: centerRow, c: centerCol + 7 };
+  const radiusR = 13;
+  const radiusC = 13;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const d1r = (r - c1.r) / radiusR;
+      const d1c = (c - c1.c) / radiusC;
+      const d2r = (r - c2.r) / radiusR;
+      const d2c = (c - c2.c) / radiusC;
+      if (d1r * d1r + d1c * d1c <= 1.0 || d2r * d2r + d2c * d2c <= 1.0) {
+        grid[r][c].terrain = 'river';
+        grid[r][c].waterLevel = 100;
+      }
+    }
+  }
+
+  // Island: 3 overlapping ellipses for an organic shape
+  const islands = [
+    { r: centerRow - 2, c: centerCol - 6, rR: 7, rC: 9 },
+    { r: centerRow + 3, c: centerCol + 3, rR: 6, rC: 10 },
+    { r: centerRow, c: centerCol + 9, rR: 5, rC: 7 },
+  ];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (grid[r][c].terrain !== 'river') continue;
+      for (const isl of islands) {
+        const dr = (r - isl.r) / isl.rR;
+        const dc = (c - isl.c) / isl.rC;
+        if (dr * dr + dc * dc <= 1.0) {
+          grid[r][c].terrain = 'soil';
+          grid[r][c].waterLevel = 50;
+          break;
+        }
+      }
+    }
+  }
+}
+
+function generateLakeInlet(grid: Cell[][], rows: number, cols: number): void {
+  // River from top edge flowing down to lake, wobbles with sin()
+  const centerCol = Math.floor(cols / 2);
+  const centerRow = Math.floor(rows / 2);
+  const radiusR = 13;
+  const seed = Math.floor(Math.random() * 1000);
+
+  let prevCol = centerCol;
+  for (let r = 0; r < centerRow - radiusR; r++) {
+    const wobble = Math.sin((r + seed) * 0.4) * 2;
+    let col = Math.round(centerCol + wobble);
+    col = Math.max(prevCol - 1, Math.min(prevCol + 1, col));
+    prevCol = col;
+
+    // Width 1-2
+    const width = Math.random() < 0.4 ? 2 : 1;
+    for (let dc = 0; dc < width; dc++) {
+      const c = col + dc;
+      if (c >= 0 && c < cols) {
+        grid[r][c].terrain = 'river';
+        grid[r][c].waterLevel = 100;
+      }
+    }
+  }
+}
+
+function generateLakeSandbank(grid: Cell[][], rows: number, cols: number): void {
+  // Sand crescent on bottom-right shore of lake — spread up to 3 cells from water
+  for (let r = Math.floor(rows / 2); r < rows; r++) {
+    for (let c = Math.floor(cols / 2); c < cols; c++) {
+      if (grid[r][c].terrain !== 'soil') continue;
+      // Check distance to lake (up to 3 cells)
+      let nearLake = false;
+      for (let dr = -3; dr <= 3 && !nearLake; dr++) {
+        for (let dc = -3; dc <= 3 && !nearLake; dc++) {
+          const nr = r + dr;
+          const nc = c + dc;
+          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && grid[nr][nc].terrain === 'river') {
+            nearLake = true;
+          }
+        }
+      }
+      if (nearLake && Math.random() < 0.8) {
+        grid[r][c].terrain = 'sand';
+      }
+    }
+  }
+}
+
+function generateSmallForest(grid: Cell[][], rows: number, cols: number): void {
+  // 4-6 trees in top-left (smaller cluster for beach map)
+  const species = getSpecies('tree');
+  if (!species) return;
+
+  const numVariants = species.colorVariants.length;
+  const forestSize = 4 + Math.floor(Math.random() * 3); // 4-6 trees
+  let placed = 0;
+  const startRow = 1;
+  const startCol = 1;
+  const clusterRadius = 3;
+
+  for (let attempt = 0; attempt < 60 && placed < forestSize; attempt++) {
+    const r = startRow + Math.floor(Math.random() * clusterRadius * 2);
+    const c = startCol + Math.floor(Math.random() * clusterRadius * 2);
+
+    if (r >= 0 && r < rows && c >= 0 && c < cols) {
+      const cell = grid[r][c];
+      if (cell.terrain === 'soil' && !cell.plant) {
+        const plant = createPlant('tree', Math.floor(Math.random() * numVariants));
+        plant.stage = PlantStage.Flowering;
+        plant.age = 50;
+        plant.growthProgress = 0;
+        cell.plant = plant;
+        cell.waterLevel = 40;
+        placed++;
+      }
+    }
+  }
+}
+
+function generateLeftForest(grid: Cell[][], rows: number, cols: number): void {
+  // 8-12 trees on left side, starting at row 30%, col 2
+  const species = getSpecies('tree');
+  if (!species) return;
+
+  const numVariants = species.colorVariants.length;
+  const forestSize = 8 + Math.floor(Math.random() * 5); // 8-12 trees
+  let placed = 0;
+  const startRow = Math.floor(rows * 0.3);
+  const startCol = 2;
+  const clusterRadius = 4;
+
+  for (let attempt = 0; attempt < 100 && placed < forestSize; attempt++) {
+    const r = startRow + Math.floor(Math.random() * clusterRadius * 2);
+    const c = startCol + Math.floor(Math.random() * clusterRadius * 2);
+
+    if (r >= 0 && r < rows && c >= 0 && c < cols) {
+      const cell = grid[r][c];
+      if (cell.terrain === 'soil' && !cell.plant) {
+        const plant = createPlant('tree', Math.floor(Math.random() * numVariants));
+        plant.stage = PlantStage.Flowering;
+        plant.age = 50;
+        plant.growthProgress = 0;
+        cell.plant = plant;
+        cell.waterLevel = 40;
+        placed++;
       }
     }
   }
@@ -186,15 +432,28 @@ function scatterWildPlants(grid: Cell[][], rows: number, cols: number): void {
   }
 }
 
-export function createGameState(): GameState {
+export function createGameState(mapType: MapType = 'river'): GameState {
   const gridRows = MAP_ROWS;
   const gridCols = MAP_COLS;
 
   const grid = createGrid(gridRows, gridCols);
-  generateRiver(grid, gridRows, gridCols);
-  generateLake(grid, gridRows, gridCols);
-  generateSand(grid, gridRows, gridCols);
-  generateForest(grid, gridRows, gridCols);
+
+  if (mapType === 'beach') {
+    generateOcean(grid, gridRows, gridCols);
+    generateRiverDelta(grid, gridRows, gridCols);
+    generateBeachSand(grid, gridRows, gridCols);
+    generateSmallForest(grid, gridRows, gridCols);
+  } else if (mapType === 'lake') {
+    generateCentralLake(grid, gridRows, gridCols);
+    generateLakeInlet(grid, gridRows, gridCols);
+    generateLakeSandbank(grid, gridRows, gridCols);
+    generateLeftForest(grid, gridRows, gridCols);
+  } else {
+    generateRiver(grid, gridRows, gridCols);
+    generateLake(grid, gridRows, gridCols);
+    generateRiverSand(grid, gridRows, gridCols);
+    generateForest(grid, gridRows, gridCols);
+  }
   scatterWildPlants(grid, gridRows, gridCols);
 
   const weather: WeatherState = {
