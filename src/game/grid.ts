@@ -5,7 +5,7 @@ export function createGrid(rows: number, cols: number): Cell[][] {
     Array.from({ length: cols }, () => ({
       waterLevel: 0,
       plant: null,
-      river: false,
+      terrain: 'soil',
       wildChar: null,
     }))
   );

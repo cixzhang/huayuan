@@ -248,7 +248,7 @@ export class Renderer {
     for (let r = 0; r < state.gridRows; r++) {
       for (let c = 0; c < state.gridCols; c++) {
         const cell = state.grid[r][c];
-        if (!cell.river) continue;
+        if (cell.terrain !== 'river') continue;
         if (cell.plant) continue;
 
         // Skip cells with resting birds

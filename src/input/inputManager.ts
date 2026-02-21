@@ -164,14 +164,14 @@ export class InputManager {
       return;
     }
 
-    if (cmd === 'terraform') {
-      this.pushAction({ type: GameActionType.ExecuteCommand, payload: { command: 'terraform' } });
-      return;
-    }
-
     // Parse multi-word commands
     const parts = cmd.split(/\s+/);
     const verb = parts[0];
+
+    if (verb === 'terraform') {
+      this.pushAction({ type: GameActionType.ExecuteCommand, payload: { command: 'terraform', arg: parts[1] || '' } });
+      return;
+    }
 
     if (verb === 'tool' || verb === 't') {
       const arg = parts[1];

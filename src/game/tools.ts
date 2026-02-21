@@ -36,7 +36,7 @@ function plantSeed(state: GameState, cell: ReturnType<typeof getCell> & {}, pos:
 
   // Special plant placement checks
   if (species?.special === 'lotus') {
-    if (!cell.river) {
+    if (cell.terrain !== 'river') {
       setMessage(state, 'Lotus can only be planted in the river!');
       return;
     }
@@ -44,8 +44,17 @@ function plantSeed(state: GameState, cell: ReturnType<typeof getCell> & {}, pos:
       setMessage(state, 'Cell already occupied!');
       return;
     }
+  } else if (species?.special === 'palm') {
+    if (cell.terrain !== 'sand') {
+      setMessage(state, 'Palm can only be planted on sand!');
+      return;
+    }
+    if (cell.plant) {
+      setMessage(state, 'Cell already occupied!');
+      return;
+    }
   } else if (species?.special === 'moss') {
-    if (cell.river) {
+    if (cell.terrain === 'river') {
       setMessage(state, 'Cannot plant in the river!');
       return;
     }
@@ -74,7 +83,7 @@ function plantSeed(state: GameState, cell: ReturnType<typeof getCell> & {}, pos:
     }
   } else {
     // Normal plants (including cactus)
-    if (cell.river) {
+    if (cell.terrain === 'river') {
       setMessage(state, 'Cannot plant in the river!');
       return;
     }

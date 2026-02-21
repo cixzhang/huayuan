@@ -88,7 +88,7 @@ export interface PlantSpecies {
   hybridLevel: number;              // 0=base, 1-4=hybrid, -1=special
   colorVariants: number[][];        // array of [seed,sprout,growing,mature,flowering] 256-color code arrays
   parentSpecies?: [string, string]; // what species combine to create this
-  special?: 'lotus' | 'cactus' | 'moss' | 'maple';
+  special?: 'lotus' | 'cactus' | 'moss' | 'maple' | 'palm';
 }
 
 export interface Plant {
@@ -100,11 +100,14 @@ export interface Plant {
   colorVariant: number;       // index into species color variant palette (0 = default)
 }
 
+// === Terrain ===
+export type Terrain = 'soil' | 'river' | 'sand';
+
 // === Grid Cell ===
 export interface Cell {
   waterLevel: number;         // 0-100
   plant: Plant | null;
-  river: boolean;             // true if this cell is part of the river
+  terrain: Terrain;           // ground type: soil, river, or sand
   wildChar: string | null;    // decorative wild plant char, harvestable
 }
 
@@ -170,7 +173,7 @@ export type SeedRewardType =
   | 'random_base' | 'random_hybrid'
   | 'grass' | 'flower' | 'tree'
   | 'lotus' | 'cactus' | 'moss'
-  | 'cha' | 'zhu' | 'maple'
+  | 'cha' | 'zhu' | 'maple' | 'palm'
   | 'fang' | 'miao' | 'guo' | 'tao' | 'ju' | 'mei' | 'lan';
 
 export interface DialogOption {

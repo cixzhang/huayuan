@@ -139,6 +139,26 @@ export const PLANT_SPECIES: Record<string, PlantSpecies> = {
       [229, 156, 46, 28, 204],
     ],
   },
+  palm: {
+    id: 'palm',
+    name: 'Palm',
+    stages: ['◦', '芽', '⌇', '♠', '椰'],
+    growthTicks: [4, 6, 8, 10],
+    waterNeed: 3,
+    hanzi: '椰子树',
+    pinyin: 'yēzi shù',
+    english: 'palm',
+    hybridLevel: -1,
+    special: 'palm',
+    colorVariants: [
+      [229, 156, 46, 34, 70],
+      [229, 156, 46, 28, 64],
+      [229, 156, 40, 34, 70],
+      [229, 156, 46, 22, 58],
+      [229, 156, 46, 34, 76],
+      [229, 156, 34, 28, 64],
+    ],
+  },
 };
 
 // Register all hybrids into the main species map

@@ -1,4 +1,4 @@
-import type { GameState, Plant } from '../types.js';
+import type { GameState, Plant, Terrain } from '../types.js';
 import { getSpecies } from '../data/plants.js';
 
 export function yankSelection(state: GameState): number {
@@ -51,7 +51,7 @@ export function pasteClipboard(state: GameState): number {
       const plant = cells[r][c];
       if (!plant) continue;
       const target = state.grid[gr][gc];
-      if (target.river || target.plant) continue;
+      if (target.terrain === 'river' || target.plant) continue;
       target.plant = { ...plant };
       count++;
     }
@@ -139,12 +139,28 @@ export function findChar(state: GameState, char: string): boolean {
   return false;
 }
 
-export function terraform(state: GameState): void {
+const TERRAIN_CYCLE: Terrain[] = ['soil', 'sand', 'river'];
+
+export function terraform(state: GameState, targetTerrain?: string): void {
   const cell = state.grid[state.cursor.row]?.[state.cursor.col];
   if (!cell) return;
-  cell.river = !cell.river;
-  if (cell.river) {
+
+  let newTerrain: Terrain;
+  if (targetTerrain && (targetTerrain === 'soil' || targetTerrain === 'sand' || targetTerrain === 'river')) {
+    newTerrain = targetTerrain;
+  } else {
+    // Cycle: soil → sand → river → soil
+    const idx = TERRAIN_CYCLE.indexOf(cell.terrain);
+    newTerrain = TERRAIN_CYCLE[(idx + 1) % TERRAIN_CYCLE.length];
+  }
+
+  cell.terrain = newTerrain;
+  if (newTerrain === 'river') {
     cell.waterLevel = 100;
+    cell.plant = null;
+    cell.wildChar = null;
+  } else if (newTerrain === 'sand') {
+    cell.waterLevel = 0;
     cell.plant = null;
     cell.wildChar = null;
   } else {

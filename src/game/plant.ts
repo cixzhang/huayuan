@@ -26,8 +26,8 @@ export function growPlant(cell: Cell): void {
   // Already at max stage
   if (plant.stage >= PlantStage.Flowering) return;
 
-  // Cactus only grows when water is low
-  if (species.special === 'cactus' && cell.waterLevel >= 25) return;
+  // Cactus and palm only grow when water is low
+  if ((species.special === 'cactus' || species.special === 'palm') && cell.waterLevel >= 25) return;
 
   // Needs water to grow (cactus has very low waterNeed so this is usually fine)
   if (cell.waterLevel < WATER_THRESHOLD) return;

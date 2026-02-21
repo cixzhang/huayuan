@@ -21,7 +21,7 @@ function findEmptyTarget(state: GameState, isWaterBird: boolean): Position | nul
     for (let c = 0; c < state.gridCols; c++) {
       const cell = state.grid[r][c];
       // Water birds can land on river cells; land birds cannot
-      const canLand = isWaterBird ? true : !cell.river;
+      const canLand = isWaterBird ? true : cell.terrain !== 'river';
       if (canLand) {
         const occupied = state.birds.some(b =>
           (b.position.row === r && b.position.col === c) ||
@@ -291,7 +291,7 @@ export function getBirdArt(state: GameState, bird: Bird): string[] {
   const birdPosition = bird.position;
   const birdType = bird ? bird.type : 0;
   const birdDef = getBirdTypeDef(birdType);
-  const isOverWater = getCell(state, birdPosition)?.river ?? false;
+  const isOverWater = getCell(state, birdPosition)?.terrain === 'river';
   const hasArtOnWater = birdDef.artOnWater.length > 0;
 
   return isOverWater && hasArtOnWater ? birdDef.artOnWater : birdDef.art;

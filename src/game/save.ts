@@ -51,6 +51,15 @@ export function deleteSave(): boolean {
 
 export function applySavedState(state: GameState, saved: Partial<SaveData>): void {
   if (saved.grid && saved.gridRows && saved.gridCols) {
+    // Migrate old saves: convert river boolean to terrain
+    for (const row of saved.grid) {
+      for (const cell of row) {
+        if ((cell as any).terrain === undefined) {
+          (cell as any).terrain = (cell as any).river ? 'river' : 'soil';
+          delete (cell as any).river;
+        }
+      }
+    }
     state.grid = saved.grid;
     state.gridRows = saved.gridRows;
     state.gridCols = saved.gridCols;

@@ -32,10 +32,15 @@ export const RIVER_WATER_AMOUNT = 8;       // Water added per tick to nearby til
 export const WEATHER_MIN_DURATION = 8;        // min growth ticks per state
 export const WEATHER_MAX_DURATION = 15;       // max growth ticks per state
 export const WEATHER_TRANSITION_TICKS = 3;    // ticks to ramp intensity up/down
-export const RAIN_WATER_PER_TICK = 12;         // water added to ALL cells when raining
+export const RAIN_WATER_PER_TICK = 15;         // water added to ALL cells when raining
 export const NIGHT_GROWTH_PENALTY = 0.5;      // growth ticks count half at night
 export const DAY_DURATION_TICKS = 40;         // ~2 min of day
 export const NIGHT_DURATION_TICKS = 20;       // ~1 min of night
+
+// Sand
+export const SAND_WATER_DECAY_PER_TICK = 6;
+export const SAND_BARE_WATER_DECAY_PER_TICK = 8;
+export const SAND_RAIN_MULTIPLIER = 0.5;
 
 // Propagation
 export const PROPAGATION_CHANCE = 0.05;           // 5% per tick per eligible plant

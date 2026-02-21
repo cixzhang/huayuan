@@ -33,6 +33,26 @@ export const SOIL = {
   },
 };
 
+// --- Sand (ground layer) ---
+export const SAND = {
+  dry: {
+    bg: [[220, 195, 145], [215, 190, 140], [225, 200, 150]] as RGB[],
+    fg: [[190, 165, 115], [185, 160, 110], [195, 170, 120]] as RGB[],
+  },
+  damp: {
+    bg: [[195, 170, 120], [190, 165, 115], [200, 175, 125]] as RGB[],
+    fg: [[165, 140, 95],  [160, 135, 90],  [170, 145, 100]] as RGB[],
+  },
+  moist: {
+    bg: [[170, 145, 100], [165, 140, 95], [175, 150, 105]] as RGB[],
+    fg: [[140, 118, 78],  [135, 113, 73], [145, 123, 83]]  as RGB[],
+  },
+  wet: {
+    bg: [[148, 125, 85], [143, 120, 80], [153, 130, 90]] as RGB[],
+    fg: [[120, 100, 65], [115, 95, 60],  [125, 105, 70]] as RGB[],
+  },
+};
+
 // --- River ---
 export const RIVER = {
   bg: [[45, 80, 130], [40, 75, 125], [50, 85, 135]] as RGB[],
@@ -82,7 +102,9 @@ export const HELP = {
 // --- Helpers (used by layers) ---
 
 export function cellBg(cell: Cell, variant: number): string {
-  return cell.river ? bgRgb(...RIVER.bg[variant]) : soilBgForWater(cell.waterLevel);
+  if (cell.terrain === 'river') return bgRgb(...RIVER.bg[variant]);
+  if (cell.terrain === 'sand') return sandBgForWater(cell.waterLevel);
+  return soilBgForWater(cell.waterLevel);
 }
 
 export function soilBgForWater(waterLevel: number): string {
@@ -98,6 +120,26 @@ export function soilFgBg(waterLevel: number, variant: number): { fg: string; bg:
     : waterLevel >= 30 ? SOIL.moist
     : waterLevel > 0 ? SOIL.damp
     : SOIL.dry;
+  const v = variant % 3;
+  return {
+    fg: fgRgb(...palette.fg[v]),
+    bg: bgRgb(...palette.bg[v]),
+  };
+}
+
+export function sandBgForWater(waterLevel: number): string {
+  const palette = waterLevel >= 60 ? SAND.wet
+    : waterLevel >= 30 ? SAND.moist
+    : waterLevel > 0 ? SAND.damp
+    : SAND.dry;
+  return bgRgb(...palette.bg[0]);
+}
+
+export function sandFgBg(waterLevel: number, variant: number): { fg: string; bg: string } {
+  const palette = waterLevel >= 60 ? SAND.wet
+    : waterLevel >= 30 ? SAND.moist
+    : waterLevel > 0 ? SAND.damp
+    : SAND.dry;
   const v = variant % 3;
   return {
     fg: fgRgb(...palette.fg[v]),

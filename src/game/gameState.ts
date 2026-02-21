@@ -46,7 +46,7 @@ function generateRiver(grid: Cell[][], rows: number, cols: number): void {
     for (let dc = -halfWidth; dc <= halfWidth; dc++) {
       const c = centerCol + dc;
       if (c >= 0 && c < cols) {
-        grid[r][c].river = true;
+        grid[r][c].terrain = 'river';
         grid[r][c].waterLevel = 100;
       }
     }
@@ -58,7 +58,7 @@ function generateLake(grid: Cell[][], rows: number, cols: number): void {
   const midRow = Math.floor(rows / 2);
   let riverMidCol = -1;
   for (let c = 0; c < cols; c++) {
-    if (grid[midRow][c].river) {
+    if (grid[midRow][c].terrain === 'river') {
       riverMidCol = c;
       break;
     }
@@ -78,7 +78,7 @@ function generateLake(grid: Cell[][], rows: number, cols: number): void {
       const dr = (r - lakeCenterRow) / radiusR;
       const dc = (c - lakeCenterCol) / radiusC;
       if (dr * dr + dc * dc <= 1.0) {
-        grid[r][c].river = true;
+        grid[r][c].terrain = 'river';
         grid[r][c].waterLevel = 100;
       }
     }
@@ -90,8 +90,46 @@ function generateLake(grid: Cell[][], rows: number, cols: number): void {
       const r = lakeCenterRow + dr;
       const c = lakeCenterCol + dc;
       if (r >= 0 && r < rows && c >= 0 && c < cols) {
-        grid[r][c].river = false;
+        grid[r][c].terrain = 'soil';
         grid[r][c].waterLevel = 50; // Moist from being surrounded by water
+      }
+    }
+  }
+}
+
+function generateSand(grid: Cell[][], rows: number, cols: number): void {
+  // Beach strips: ~65% chance for soil cells adjacent to river
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (grid[r][c].terrain !== 'soil') continue;
+      let adjRiver = false;
+      for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]] as const) {
+        const nr = r + dr;
+        const nc = c + dc;
+        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && grid[nr][nc].terrain === 'river') {
+          adjRiver = true;
+          break;
+        }
+      }
+      if (adjRiver && Math.random() < 0.65) {
+        grid[r][c].terrain = 'sand';
+      }
+    }
+  }
+
+  // Desert patch: ellipse in the bottom-right area
+  const centerRow = Math.floor(rows * 0.75);
+  const centerCol = Math.floor(cols * 0.8);
+  const radiusR = 4;
+  const radiusC = 6;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (grid[r][c].terrain !== 'soil') continue;
+      const dr = (r - centerRow) / radiusR;
+      const dc = (c - centerCol) / radiusC;
+      if (dr * dr + dc * dc <= 1.0) {
+        grid[r][c].terrain = 'sand';
       }
     }
   }
@@ -116,7 +154,7 @@ function generateForest(grid: Cell[][], rows: number, cols: number): void {
 
     if (r >= 0 && r < rows && c >= 0 && c < cols) {
       const cell = grid[r][c];
-      if (!cell.river && !cell.plant) {
+      if (cell.terrain === 'soil' && !cell.plant) {
         const plant = createPlant('tree', Math.floor(Math.random() * numVariants));
         // Set to Flowering stage (mature tree)
         plant.stage = PlantStage.Flowering;
@@ -137,7 +175,7 @@ function scatterWildPlants(grid: Cell[][], rows: number, cols: number): void {
     for (let c = 0; c < cols; c++) {
       const cell = grid[r][c];
       // Skip cells with river, plants, or near forest (top-left corner)
-      if (cell.river || cell.plant) continue;
+      if (cell.terrain !== 'soil' || cell.plant) continue;
       if (r < 10 && c < 10) continue; // Skip near forest area
 
       // ~15-20% chance
@@ -155,6 +193,7 @@ export function createGameState(): GameState {
   const grid = createGrid(gridRows, gridCols);
   generateRiver(grid, gridRows, gridCols);
   generateLake(grid, gridRows, gridCols);
+  generateSand(grid, gridRows, gridCols);
   generateForest(grid, gridRows, gridCols);
   scatterWildPlants(grid, gridRows, gridCols);
 

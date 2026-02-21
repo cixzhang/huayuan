@@ -576,6 +576,22 @@ export const DIALOG_POOL: DialogTree[] = [
     followup: { text: '给你一颗枫树种子，秋天它会很美丽。', pinyin: 'gěi nǐ yī kē fēngshù zhǒngzi, qiūtiān tā huì hěn měilì.' },
     seedReward: 'maple',
   },
+  {
+    id: 'special_palm',
+    conditions: { weather: WeatherType.Clear },
+    lines: [
+      { text: '海边的沙滩上有很多椰子树。', pinyin: 'hǎibiān de shātān shàng yǒu hěn duō yēzi shù.' },
+      { text: '椰子树不需要很多水，它喜欢沙地。', pinyin: 'yēzi shù bù xūyào hěn duō shuǐ, tā xǐhuan shā dì.' },
+    ],
+    question: { text: '椰子树喜欢长在什么地方？', pinyin: 'yēzi shù xǐhuan zhǎng zài shénme dìfang?' },
+    options: [
+      { text: '沙地上', pinyin: 'shā dì shàng', english: 'On sandy ground', isCorrect: true },
+      { text: '水里', pinyin: 'shuǐ lǐ', english: 'In water', isCorrect: false },
+      { text: '雪地上', pinyin: 'xuě dì shàng', english: 'On snow', isCorrect: false },
+    ],
+    followup: { text: '对！给你一颗椰子树种子，种在沙地上吧。', pinyin: 'duì! gěi nǐ yī kē yēzi shù zhǒngzi, zhòng zài shā dì shàng ba.' },
+    seedReward: 'palm',
+  },
 
   // --- Philosophy/nature ---
   {

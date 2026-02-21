@@ -1,7 +1,7 @@
 import type { GameState, GameAction } from '../types.js';
 import { GameActionType, ToolType, InputMode, WeatherType, PlantStage, BirdType } from '../types.js';
 import { Renderer } from '../render/renderer.js';
-import { RENDER_INTERVAL_MS, GROWTH_TICK_MS, JUMP_DISTANCE, WATER_DECAY_PER_TICK, BARE_WATER_DECAY_PER_TICK, MESSAGE_DURATION_TICKS, RIVER_WATER_RADIUS, RIVER_WATER_AMOUNT, WATER_MAX, WEATHER_MIN_DURATION, WEATHER_MAX_DURATION, WEATHER_TRANSITION_TICKS, RAIN_WATER_PER_TICK, NIGHT_GROWTH_PENALTY, DAY_DURATION_TICKS, NIGHT_DURATION_TICKS } from '../constants.js';
+import { RENDER_INTERVAL_MS, GROWTH_TICK_MS, JUMP_DISTANCE, WATER_DECAY_PER_TICK, BARE_WATER_DECAY_PER_TICK, MESSAGE_DURATION_TICKS, RIVER_WATER_RADIUS, RIVER_WATER_AMOUNT, WATER_MAX, WEATHER_MIN_DURATION, WEATHER_MAX_DURATION, WEATHER_TRANSITION_TICKS, RAIN_WATER_PER_TICK, NIGHT_GROWTH_PENALTY, DAY_DURATION_TICKS, NIGHT_DURATION_TICKS, SAND_WATER_DECAY_PER_TICK, SAND_BARE_WATER_DECAY_PER_TICK, SAND_RAIN_MULTIPLIER } from '../constants.js';
 import { clampPosition } from './grid.js';
 import { growPlant } from './plant.js';
 import { useTool, useToolOnArea } from './tools.js';
@@ -471,8 +471,8 @@ export class GameLoop {
       }
 
       case 'terraform':
-        terraform(s);
-        s.message = s.grid[s.cursor.row][s.cursor.col].river ? 'Terraformed → river' : 'Terraformed → land';
+        terraform(s, payload.arg || undefined);
+        s.message = `Terraformed → ${s.grid[s.cursor.row][s.cursor.col].terrain}`;
         s.messageExpiry = s.tickCount + MESSAGE_DURATION_TICKS;
         break;
 
@@ -491,7 +491,7 @@ export class GameLoop {
         // Add rows to top
         for (let i = 0; i < amount; i++) {
           const row = Array.from({ length: s.gridCols }, () => ({
-            waterLevel: 0, plant: null, river: false, wildChar: null,
+            waterLevel: 0, plant: null, terrain: 'soil' as const, wildChar: null,
           }));
           s.grid.unshift(row);
         }
@@ -503,7 +503,7 @@ export class GameLoop {
         // Add rows to bottom
         for (let i = 0; i < amount; i++) {
           const row = Array.from({ length: s.gridCols }, () => ({
-            waterLevel: 0, plant: null, river: false, wildChar: null,
+            waterLevel: 0, plant: null, terrain: 'soil' as const, wildChar: null,
           }));
           s.grid.push(row);
         }
@@ -514,7 +514,7 @@ export class GameLoop {
         // Add columns to right
         for (const row of s.grid) {
           for (let i = 0; i < amount; i++) {
-            row.push({ waterLevel: 0, plant: null, river: false, wildChar: null });
+            row.push({ waterLevel: 0, plant: null, terrain: 'soil' as const, wildChar: null });
           }
         }
         s.gridCols += amount;
@@ -524,7 +524,7 @@ export class GameLoop {
         // Add columns to left
         for (const row of s.grid) {
           for (let i = 0; i < amount; i++) {
-            row.unshift({ waterLevel: 0, plant: null, river: false, wildChar: null });
+            row.unshift({ waterLevel: 0, plant: null, terrain: 'soil' as const, wildChar: null });
           }
         }
         s.gridCols += amount;
@@ -597,7 +597,7 @@ export class GameLoop {
       }
     }
 
-    // Rain effect: water all non-river cells
+    // Rain effect: water all non-river cells (sand gets half rain)
     if (w.current === WeatherType.Rain) {
       const waterAdd = Math.round(RAIN_WATER_PER_TICK * w.intensity);
       if (waterAdd > 0) {
@@ -605,9 +605,11 @@ export class GameLoop {
         for (let r = 0; r < s.gridRows; r++) {
           for (let c = 0; c < s.gridCols; c++) {
             const cell = s.grid[r][c];
-            if (!cell.river) {
-              cell.waterLevel = Math.min(WATER_MAX, cell.waterLevel + waterAdd);
-            }
+            if (cell.terrain === 'river') continue;
+            const amount = cell.terrain === 'sand'
+              ? Math.round(waterAdd * SAND_RAIN_MULTIPLIER)
+              : waterAdd;
+            cell.waterLevel = Math.min(WATER_MAX, cell.waterLevel + amount);
           }
         }
       }
@@ -626,20 +628,20 @@ export class GameLoop {
       s.message = '';
     }
 
-    // River irrigation: water tiles near river
+    // River irrigation: water tiles near river (sand blocks irrigation)
     for (let r = 0; r < s.gridRows; r++) {
       for (let c = 0; c < s.gridCols; c++) {
-        if (!s.grid[r][c].river) continue;
+        if (s.grid[r][c].terrain !== 'river') continue;
         // Keep river cells fully watered
         s.grid[r][c].waterLevel = 100;
-        // Water nearby soil cells
+        // Water nearby soil cells (skip sand and river)
         for (let dr = -RIVER_WATER_RADIUS; dr <= RIVER_WATER_RADIUS; dr++) {
           for (let dc = -RIVER_WATER_RADIUS; dc <= RIVER_WATER_RADIUS; dc++) {
             const nr = r + dr;
             const nc = c + dc;
             if (nr >= 0 && nr < s.gridRows && nc >= 0 && nc < s.gridCols) {
               const neighbor = s.grid[nr][nc];
-              if (!neighbor.river) {
+              if (neighbor.terrain === 'soil') {
                 neighbor.waterLevel = Math.min(WATER_MAX, neighbor.waterLevel + RIVER_WATER_AMOUNT);
               }
             }
@@ -654,9 +656,14 @@ export class GameLoop {
         const cell = s.grid[r][c];
 
         // Water decay (skip river cells — they stay full)
-        // Bare ground dries faster than planted ground
-        if (cell.waterLevel > 0 && !cell.river) {
-          const decay = cell.plant ? WATER_DECAY_PER_TICK : BARE_WATER_DECAY_PER_TICK;
+        // Bare ground dries faster than planted ground; sand dries even faster
+        if (cell.waterLevel > 0 && cell.terrain !== 'river') {
+          let decay: number;
+          if (cell.terrain === 'sand') {
+            decay = cell.plant ? SAND_WATER_DECAY_PER_TICK : SAND_BARE_WATER_DECAY_PER_TICK;
+          } else {
+            decay = cell.plant ? WATER_DECAY_PER_TICK : BARE_WATER_DECAY_PER_TICK;
+          }
           cell.waterLevel = Math.max(0, cell.waterLevel - decay);
         }
 

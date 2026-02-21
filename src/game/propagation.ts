@@ -71,7 +71,7 @@ export function propagationTick(state: GameState): void {
         const nc = c + dc;
         if (nr < 0 || nr >= gridRows || nc < 0 || nc >= gridCols) continue;
         const neighbor = grid[nr][nc];
-        if (neighbor.river) continue;
+        if (neighbor.terrain === 'river') continue;
 
         if (neighbor.plant) {
           plantNeighbors.push([nr, nc]);
@@ -128,7 +128,7 @@ export function propagationTick(state: GameState): void {
   // Apply all events
   for (const event of events) {
     const cell = grid[event.row][event.col];
-    if (cell.plant || cell.river) continue; // double-check
+    if (cell.plant || cell.terrain === 'river') continue; // double-check
     cell.plant = createPlant(event.speciesId, event.colorVariant);
     cell.waterLevel = Math.min(WATER_MAX, cell.waterLevel + PROPAGATION_OFFSPRING_WATER);
   }
@@ -142,9 +142,10 @@ export function waterDonationTick(state: GameState): void {
     for (let c = 0; c < gridCols; c++) {
       const cell = grid[r][c];
       if (!cell.plant) continue;
-      // Cactus doesn't donate water
+      // Cactus and palm don't donate water; sand cells don't donate
       const donorSpecies = getSpecies(cell.plant.speciesId);
-      if (donorSpecies?.special === 'cactus') continue;
+      if (donorSpecies?.special === 'cactus' || donorSpecies?.special === 'palm') continue;
+      if (cell.terrain === 'sand') continue;
       if (cell.waterLevel < WATER_DONATION_THRESHOLD) continue;
 
       // Donate to cardinal neighbors
@@ -153,7 +154,7 @@ export function waterDonationTick(state: GameState): void {
         const nc = c + dc;
         if (nr < 0 || nr >= gridRows || nc < 0 || nc >= gridCols) continue;
         const neighbor = grid[nr][nc];
-        if (neighbor.river) continue;
+        if (neighbor.terrain === 'river' || neighbor.terrain === 'sand') continue;
 
         events.push({
           row: nr,
@@ -205,22 +206,26 @@ export function specialPropagationTick(state: GameState): void {
 
         if (species.special === 'lotus') {
           // Target: empty river tile adjacent to at least 1 non-river cell
-          if (!neighbor.river) continue;
+          if (neighbor.terrain !== 'river') continue;
           let adjLand = false;
           for (const [dr2, dc2] of CARDINAL) {
             const nr2 = nr + dr2;
             const nc2 = nc + dc2;
             if (nr2 < 0 || nr2 >= gridRows || nc2 < 0 || nc2 >= gridCols) continue;
-            if (!grid[nr2][nc2].river) { adjLand = true; break; }
+            if (grid[nr2][nc2].terrain !== 'river') { adjLand = true; break; }
           }
           if (!adjLand) continue;
         } else if (species.special === 'cactus') {
           // Target: empty non-river tile with water < 25
-          if (neighbor.river) continue;
+          if (neighbor.terrain === 'river') continue;
+          if (neighbor.waterLevel >= 25) continue;
+        } else if (species.special === 'palm') {
+          // Target: empty sand tile with water < 25
+          if (neighbor.terrain !== 'sand') continue;
           if (neighbor.waterLevel >= 25) continue;
         } else if (species.special === 'moss') {
           // Target: empty non-river tile adjacent to a tree (stage >= Mature)
-          if (neighbor.river) continue;
+          if (neighbor.terrain === 'river') continue;
           let adjTree = false;
           for (const [dr2, dc2] of CARDINAL) {
             const nr2 = nr + dr2;
@@ -269,12 +274,14 @@ export function specialPropagationTick(state: GameState): void {
   for (const event of events) {
     const cell = grid[event.row][event.col];
     if (cell.plant) continue;
-    // Lotus goes on river, others on land
+    // Lotus goes on river, palm on sand, others on non-river land
     const species = getSpecies(event.speciesId);
     if (species?.special === 'lotus') {
-      if (!cell.river) continue;
+      if (cell.terrain !== 'river') continue;
+    } else if (species?.special === 'palm') {
+      if (cell.terrain !== 'sand') continue;
     } else {
-      if (cell.river) continue;
+      if (cell.terrain === 'river') continue;
     }
     cell.plant = createPlant(event.speciesId, event.colorVariant);
     if (species?.special !== 'lotus') {

@@ -251,8 +251,9 @@ export function renderHud(state: GameState, cols: number): RenderCell[][] {
     const wLevel = cell ? cell.waterLevel : 0;
     row2Segments.push({ text: waterMeter(wLevel), fg: waterColor, bg: '' });
 
-    // Position
-    row2Segments.push({ text: ` [${state.cursor.row},${state.cursor.col}]`, fg: dimFg, bg: '' });
+    // Position + terrain
+    const terrainLabel = cell && cell.terrain !== 'soil' ? ` ${cell.terrain}` : '';
+    row2Segments.push({ text: ` [${state.cursor.row},${state.cursor.col}]${terrainLabel}`, fg: dimFg, bg: '' });
 
     // Bird at cursor?
     const birdAtCursor = getBirdAtPosition(state, state.cursor.row, state.cursor.col);
@@ -326,7 +327,7 @@ export function renderHelpOverlay(state: GameState, cols: number, gridRows: numb
     '    :tool <name>   Switch tool',
     '    :seed <name>   Switch seed',
     '    :summon <bird>  Summon bird',
-    '    :terraform     Toggle river/land',
+    '    :terraform <type>  Set terrain (soil/sand/river)',
     '    :q       Quit',
     '    ?        Toggle this help',
     '',
